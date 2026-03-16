@@ -1,0 +1,707 @@
+{% extends "layouts/main_layout.html" %}
+
+{% block title %}Hasil Analisis — FakeNews Detector{% endblock %}
+{% block page_title %}Hasil Analisis{% endblock %}
+{% block page_subtitle %}Evaluasi lengkap model IndoBERT untuk deteksi berita palsu{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Banner ─────────────────────────────────────── */
+    .an-banner {
+        background: #edf2ff;
+        border: 1px solid rgba(59,91,219,.2);
+        border-top: 3px solid #3b5bdb;
+        border-radius: 16px;
+        padding: 28px 32px;
+        margin-bottom: 32px;
+        display: flex; align-items: center;
+        justify-content: space-between; gap: 20px;
+        position: relative; overflow: hidden;
+    }
+    .an-banner-bg {
+        position: absolute; inset: 0; pointer-events: none;
+        background-image: radial-gradient(rgba(59,91,219,.07) 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+    .an-banner-left  { position: relative; z-index: 1; }
+    .an-banner-right { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 12px; flex-shrink: 0; }
+    .an-eye   { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #3b5bdb; margin-bottom: 6px; display: block; }
+    .an-title { font-size: 1.15rem; font-weight: 800; color: #0f1117; margin-bottom: 4px; display: block; letter-spacing: -.02em; }
+    .an-sub   { font-size: .82rem; color: #3b3f52; display: block; }
+    .an-chip  {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 10px 18px; border-radius: 12px;
+        background: #ffffff; border: 1px solid rgba(59,91,219,.2);
+        text-align: center;
+    }
+    .an-chip-num  { font-size: 1.2rem; font-weight: 800; color: #3b5bdb; line-height: 1; display: block; }
+    .an-chip-lbl  { font-size: .68rem; color: #8b90a8; font-weight: 500; display: block; }
+
+    /* ── Layout ──────────────────────────────────────── */
+    .four-col { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+    .two-col  { display: grid; grid-template-columns: 1fr 1fr;      gap: 16px; margin-bottom: 24px; }
+    .full-col { margin-bottom: 24px; }
+
+    /* ── Card ────────────────────────────────────────── */
+    .ac {
+        background: #ffffff; border: 1px solid #e2e4f0;
+        border-radius: 14px; overflow: hidden;
+        transition: border-color .2s, box-shadow .2s, transform .2s;
+    }
+    .ac:hover { border-color: rgba(59,91,219,.22); box-shadow: 0 4px 16px rgba(15,17,23,.08); transform: translateY(-2px); }
+    .ac-hd {
+        padding: 13px 18px; border-bottom: 1px solid #e2e4f0;
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .ac-hd-t { font-size: .88rem; font-weight: 700; color: #0f1117; display: flex; align-items: center; gap: 8px; }
+    .ac-hd-t i { color: #3b5bdb; }
+    .ac-body { padding: 18px; }
+
+    /* ── Metric stat cards ───────────────────────────── */
+    .mcard {
+        background: #ffffff; border: 1px solid #e2e4f0;
+        border-radius: 14px; padding: 18px;
+        text-align: center; position: relative;
+        overflow: hidden;
+        transition: border-color .2s, box-shadow .2s, transform .2s;
+    }
+    .mcard::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .mcard.c-b::before { background: #3b5bdb; }
+    .mcard.c-v::before { background: #7048e8; }
+    .mcard.c-g::before { background: #2f9e44; }
+    .mcard.c-a::before { background: #e67700; }
+    .mcard:hover { border-color: rgba(59,91,219,.2); box-shadow: 0 4px 16px rgba(15,17,23,.08); transform: translateY(-2px); }
+    .mcard-num { font-size: 1.8rem; font-weight: 800; line-height: 1; margin-bottom: 5px; }
+    .mcard-lbl { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8b90a8; margin-bottom: 4px; }
+    .mcard-sub { font-size: .75rem; color: #8b90a8; }
+    .mcard-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 10px; border-radius: 100px;
+        font-size: .7rem; font-weight: 700; margin-top: 8px;
+    }
+    .mb-g { background: #ebfbee; color: #2f9e44; }
+    .mb-b { background: #edf2ff; color: #3b5bdb; }
+
+    /* ── Pill ────────────────────────────────────────── */
+    .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: .72rem; font-weight: 600; }
+    .p-b  { background: #edf2ff; color: #3b5bdb; }
+    .p-v  { background: #f3f0ff; color: #7048e8; }
+    .p-g  { background: #ebfbee; color: #2f9e44; }
+    .p-r  { background: #fff5f5; color: #e03131; }
+    .p-a  { background: #fff8eb; color: #e67700; }
+    .p-m  { background: #f5f6fa; color: #8b90a8; border: 1px solid #e2e4f0; }
+
+    /* ── Info rows ───────────────────────────────────── */
+    .irow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #e2e4f0; font-size: .85rem; }
+    .irow:first-child { padding-top: 0; }
+    .irow:last-child  { border-bottom: none; padding-bottom: 0; }
+    .ikey { color: #8b90a8; font-weight: 500; }
+    .ival { color: #0f1117; font-weight: 600; text-align: right; }
+
+    /* ── Progress bar ────────────────────────────────── */
+    .prog-row { margin-bottom: 12px; }
+    .prog-row:last-child { margin-bottom: 0; }
+    .prog-hd  { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: .82rem; }
+    .prog-lbl { font-weight: 600; color: #3b3f52; }
+    .prog-val { font-weight: 700; color: #0f1117; }
+    .prog-track { height: 7px; border-radius: 4px; background: #eef0f8; overflow: hidden; }
+    .prog-fill  { height: 100%; border-radius: 4px; transition: width 1.2s cubic-bezier(.22,1,.36,1); }
+    .pf-b { background: linear-gradient(90deg, #3b5bdb, #4c6ef5); }
+    .pf-v { background: linear-gradient(90deg, #7048e8, #9775fa); }
+    .pf-g { background: linear-gradient(90deg, #2f9e44, #51cf66); }
+    .pf-r { background: linear-gradient(90deg, #e03131, #ff6b6b); }
+
+    /* ── Classification report table ─────────────────── */
+    .cr-table { width: 100%; border-collapse: collapse; }
+    .cr-table th {
+        padding: 9px 12px; text-align: left;
+        font-size: .72rem; font-weight: 700; letter-spacing: .05em;
+        text-transform: uppercase; color: #8b90a8;
+        border-bottom: 1px solid #e2e4f0; background: #f5f6fa;
+    }
+    .cr-table td { padding: 10px 12px; border-bottom: 1px solid #e2e4f0; font-size: .85rem; color: #3b3f52; }
+    .cr-table tr:last-child td { border-bottom: none; }
+    .cr-table tr:hover td { background: #f5f6fa; }
+    .cr-name { font-weight: 700; color: #0f1117; }
+
+    /* ── Sample results table ─────────────────────────── */
+    .sr-table { width: 100%; border-collapse: collapse; }
+    .sr-table th {
+        padding: 9px 12px; text-align: left; white-space: nowrap;
+        font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+        text-transform: uppercase; color: #8b90a8;
+        border-bottom: 1px solid #e2e4f0; background: #f5f6fa;
+    }
+    .sr-table td { padding: 10px 12px; border-bottom: 1px solid #e2e4f0; font-size: .82rem; color: #3b3f52; }
+    .sr-table tr:last-child td { border-bottom: none; }
+    .sr-table tr:hover td { background: #f5f6fa; }
+    .sr-text { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+    .table-wrap { overflow-x: auto; }
+
+    /* ── Viz iframe ───────────────────────────────────── */
+    .viz-frame { width: 100%; height: 360px; border: none; display: block; }
+    .viz-frame.tall { height: 420px; }
+
+    /* ── Data split visual ────────────────────────────── */
+    .split-bar { height: 10px; border-radius: 5px; overflow: hidden; display: flex; margin: 8px 0; }
+    .split-train { background: #3b5bdb; }
+    .split-test  { background: #7048e8; }
+
+    /* ── Training history strip ───────────────────────── */
+    .history-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .history-item { background: #f5f6fa; border: 1px solid #e2e4f0; border-radius: 10px; padding: 12px; text-align: center; }
+    .history-num  { font-size: 1.1rem; font-weight: 800; color: #0f1117; }
+    .history-lbl  { font-size: .72rem; color: #8b90a8; font-weight: 500; margin-top: 2px; }
+
+    /* ── Confusion matrix summary ─────────────────────── */
+    .cm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .cm-cell { padding: 14px; border-radius: 10px; text-align: center; }
+    .cm-tp { background: #ebfbee; border: 1px solid rgba(47,158,68,.2); }
+    .cm-tn { background: #ebfbee; border: 1px solid rgba(47,158,68,.2); }
+    .cm-fp { background: #fff5f5; border: 1px solid rgba(224,49,49,.15); }
+    .cm-fn { background: #fff5f5; border: 1px solid rgba(224,49,49,.15); }
+    .cm-num { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    .cm-lbl { font-size: .72rem; font-weight: 700; margin-top: 4px; letter-spacing: .04em; text-transform: uppercase; }
+    .cm-sub { font-size: .7rem; color: #8b90a8; margin-top: 2px; }
+
+    /* ── Conclusion ──────────────────────────────────── */
+    .conclusion { background: #edf2ff; border: 1px solid rgba(59,91,219,.2); border-radius: 12px; padding: 20px; font-size: .9rem; color: #3b3f52; line-height: 1.75; }
+    .conclusion strong { color: #3b5bdb; }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 1100px) { .four-col { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 768px)  { .two-col { grid-template-columns: 1fr; } .four-col { grid-template-columns: 1fr 1fr; } .an-banner { flex-direction: column; } .an-banner-right { width: 100%; } .history-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px)  { .four-col { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Banner ─────────────────────────────────────────────── -->
+<div class="an-banner">
+    <div class="an-banner-bg"></div>
+    <div class="an-banner-left">
+        <span class="an-eye">Hasil Analisis Model</span>
+        <span class="an-title">Evaluasi IndoBERT — Deteksi Berita Palsu</span>
+        <span class="an-sub">
+            Fine-tuning pada {{ dataset_info.total or '—' }} data berita Bahasa Indonesia ·
+            Train {{ dataset_info.train or '—' }} · Test {{ dataset_info.test or '—' }}
+        </span>
+    </div>
+    <div class="an-banner-right">
+        <div class="an-chip">
+            <span class="an-chip-num" style="color:#3b5bdb;">
+                {% if performance.accuracy %}{{ "%.2f"|format(performance.accuracy * 100) }}%{% else %}—{% endif %}
+            </span>
+            <span class="an-chip-lbl">Accuracy</span>
+        </div>
+        <div class="an-chip">
+            <span class="an-chip-num" style="color:#7048e8;">
+                {% if performance.macro_f1 %}{{ "%.2f"|format(performance.macro_f1 * 100) }}%{% else %}—{% endif %}
+            </span>
+            <span class="an-chip-lbl">Macro F1</span>
+        </div>
+        <div class="an-chip">
+            <span class="an-chip-num" style="color:#2f9e44;">
+                {{ model_info.epochs or '—' }}
+            </span>
+            <span class="an-chip-lbl">Epochs</span>
+        </div>
+    </div>
+</div>
+
+<!-- ── Section label ─────────────────────────────────────── -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+    <span style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8b90a8;">Metrik Evaluasi</span>
+    <div style="flex:1;height:1px;background:#e2e4f0;"></div>
+</div>
+
+<!-- ── Row 1: 4 Metric Cards ──────────────────────────────── -->
+<div class="four-col">
+    <div class="mcard c-b">
+        <div class="mcard-lbl">Accuracy</div>
+        <div class="mcard-num" style="color:#3b5bdb;">
+            {% if performance.accuracy %}{{ "%.2f"|format(performance.accuracy * 100) }}%{% else %}—{% endif %}
+        </div>
+        <div class="mcard-sub">Keakuratan keseluruhan</div>
+        <div class="mcard-badge mb-b"><i class="ph ph-check"></i> Overall</div>
+    </div>
+    <div class="mcard c-v">
+        <div class="mcard-lbl">Macro F1-Score</div>
+        <div class="mcard-num" style="color:#7048e8;">
+            {% if performance.macro_f1 %}{{ "%.2f"|format(performance.macro_f1 * 100) }}%{% else %}—{% endif %}
+        </div>
+        <div class="mcard-sub">Rata-rata F1 per kelas</div>
+        <div class="mcard-badge mb-g"><i class="ph ph-check"></i> Baik</div>
+    </div>
+    <div class="mcard c-g">
+        <div class="mcard-lbl">Sensitivity</div>
+        <div class="mcard-num" style="color:#2f9e44;">
+            {% if performance.sensitivity %}{{ "%.2f"|format(performance.sensitivity * 100) }}%{% else %}—{% endif %}
+        </div>
+        <div class="mcard-sub">True Positive Rate</div>
+        <div class="mcard-badge mb-g"><i class="ph ph-check"></i> FAKE Detection</div>
+    </div>
+    <div class="mcard c-a">
+        <div class="mcard-lbl">Specificity</div>
+        <div class="mcard-num" style="color:#e67700;">
+            {% if performance.specificity %}{{ "%.2f"|format(performance.specificity * 100) }}%{% else %}—{% endif %}
+        </div>
+        <div class="mcard-sub">True Negative Rate</div>
+        <div class="mcard-badge mb-b"><i class="ph ph-check"></i> REAL Detection</div>
+    </div>
+</div>
+
+<!-- ── Section label ─────────────────────────────────────── -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+    <span style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8b90a8;">Laporan Klasifikasi</span>
+    <div style="flex:1;height:1px;background:#e2e4f0;"></div>
+</div>
+
+<!-- ── Row 2: Classification Report + Konfigurasi ─────────── -->
+<div class="two-col">
+
+    <!-- Classification Report lengkap -->
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-clipboard-text"></i> Classification Report</span>
+            <span class="pill p-b">Per Kelas</span>
+        </div>
+        <div class="ac-body">
+            <div class="table-wrap">
+                <table class="cr-table">
+                    <thead>
+                        <tr>
+                            <th>Kelas</th>
+                            <th>Precision</th>
+                            <th>Recall</th>
+                            <th>F1-Score</th>
+                            <th>Support</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="cr-name"><span class="pill p-r">FAKE</span></span></td>
+                            <td style="font-weight:700;color:#e03131;">
+                                {% if performance.fake_precision %}{{ "%.4f"|format(performance.fake_precision) }}{% else %}—{% endif %}
+                            </td>
+                            <td style="font-weight:700;color:#e03131;">
+                                {% if performance.fake_recall %}{{ "%.4f"|format(performance.fake_recall) }}{% else %}—{% endif %}
+                            </td>
+                            <td style="font-weight:700;color:#e03131;">
+                                {% if performance.fake_f1 %}{{ "%.4f"|format(performance.fake_f1) }}{% else %}—{% endif %}
+                            </td>
+                            <td>{{ dataset_info.test // 2 if dataset_info.test else '—' }}</td>
+                        </tr>
+                        <tr>
+                            <td><span class="cr-name"><span class="pill p-g">REAL</span></span></td>
+                            <td style="font-weight:700;color:#2f9e44;">
+                                {% if performance.real_precision %}{{ "%.4f"|format(performance.real_precision) }}{% else %}—{% endif %}
+                            </td>
+                            <td style="font-weight:700;color:#2f9e44;">
+                                {% if performance.real_recall %}{{ "%.4f"|format(performance.real_recall) }}{% else %}—{% endif %}
+                            </td>
+                            <td style="font-weight:700;color:#2f9e44;">
+                                {% if performance.real_f1 %}{{ "%.4f"|format(performance.real_f1) }}{% else %}—{% endif %}
+                            </td>
+                            <td>{{ dataset_info.test // 2 if dataset_info.test else '—' }}</td>
+                        </tr>
+                        <tr style="background:#f5f6fa;">
+                            <td><span class="cr-name">Macro Avg</span></td>
+                            <td style="font-weight:700;color:#3b5bdb;">
+                                {% if performance.fake_precision and performance.real_precision %}
+                                    {{ "%.4f"|format((performance.fake_precision + performance.real_precision) / 2) }}
+                                {% else %}—{% endif %}
+                            </td>
+                            <td style="font-weight:700;color:#3b5bdb;">
+                                {% if performance.fake_recall and performance.real_recall %}
+                                    {{ "%.4f"|format((performance.fake_recall + performance.real_recall) / 2) }}
+                                {% else %}—{% endif %}
+                            </td>
+                            <td style="font-weight:700;color:#3b5bdb;">
+                                {% if performance.macro_f1 %}{{ "%.4f"|format(performance.macro_f1) }}{% else %}—{% endif %}
+                            </td>
+                            <td>{{ dataset_info.test or '—' }}</td>
+                        </tr>
+                        <tr style="background:#f5f6fa;">
+                            <td><span class="cr-name">Accuracy</span></td>
+                            <td colspan="3" style="text-align:center;font-weight:800;color:#3b5bdb;font-size:1rem;">
+                                {% if performance.accuracy %}{{ "%.4f"|format(performance.accuracy) }}{% else %}—{% endif %}
+                            </td>
+                            <td>{{ dataset_info.test or '—' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Tambahan Sensitivity & Specificity -->
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e2e4f0;">
+                <div style="font-size:.75rem;font-weight:700;color:#8b90a8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Metrik Tambahan</div>
+                <div class="irow">
+                    <span class="ikey">Sensitivity (TPR)</span>
+                    <span class="ival" style="color:#2f9e44;">
+                        {% if performance.sensitivity %}{{ "%.4f"|format(performance.sensitivity) }}{% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="irow">
+                    <span class="ikey">Specificity (TNR)</span>
+                    <span class="ival" style="color:#e67700;">
+                        {% if performance.specificity %}{{ "%.4f"|format(performance.specificity) }}{% else %}—{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Konfigurasi + Data Split -->
+    <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <!-- Konfigurasi Model -->
+        <div class="ac">
+            <div class="ac-hd">
+                <span class="ac-hd-t"><i class="ph ph-gear"></i> Konfigurasi Training</span>
+                <span class="pill p-b">IndoBERT</span>
+            </div>
+            <div class="ac-body">
+                <div class="irow">
+                    <span class="ikey">Model</span>
+                    <span class="ival" style="font-size:.78rem;">{{ model_info.model_name or '—' }}</span>
+                </div>
+                <div class="irow">
+                    <span class="ikey">Epochs</span>
+                    <span class="ival">{{ model_info.epochs or '—' }}</span>
+                </div>
+                <div class="irow">
+                    <span class="ikey">Learning Rate</span>
+                    <span class="ival">{{ model_info.learning_rate or '—' }}</span>
+                </div>
+                <div class="irow">
+                    <span class="ikey">Batch Size</span>
+                    <span class="ival">{{ model_info.batch_size or '—' }}</span>
+                </div>
+                <div class="irow">
+                    <span class="ikey">Max Length</span>
+                    <span class="ival">{{ model_info.max_length or '—' }} token</span>
+                </div>
+                <div class="irow">
+                    <span class="ikey">Optimizer</span>
+                    <span class="ival">AdamW</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Split -->
+        <div class="ac">
+            <div class="ac-hd">
+                <span class="ac-hd-t"><i class="ph ph-git-branch"></i> Pembagian Dataset</span>
+                <span class="pill p-m">80:20</span>
+            </div>
+            <div class="ac-body">
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:4px;">
+                    <span style="color:#3b5bdb;font-weight:700;">Train: {{ dataset_info.train or '—' }} (80%)</span>
+                    <span style="color:#7048e8;font-weight:700;">Test: {{ dataset_info.test or '—' }} (20%)</span>
+                </div>
+                <div class="split-bar">
+                    <div class="split-train" style="width:80%;"></div>
+                    <div class="split-test"  style="width:20%;"></div>
+                </div>
+                <div class="irow" style="margin-top:10px;">
+                    <span class="ikey">Total Data</span>
+                    <span class="ival">{{ dataset_info.total or '—' }} berita</span>
+                </div>
+                <div class="irow">
+                    <span class="ikey">Balancing</span>
+                    <span class="ival">{{ dataset_info.balance or '50-50' }} (FAKE:REAL)</span>
+                </div>
+                <div class="irow">
+                    <span class="ikey">Sumber FAKE</span>
+                    <span class="ival">TurnBackHoax.id</span>
+                </div>
+                <div class="irow">
+                    <span class="ikey">Sumber REAL</span>
+                    <span class="ival">Antara News</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 3: Progress bar per kelas ──────────────────────── -->
+<div class="two-col">
+
+    <!-- FAKE metrics visual -->
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-x-circle"></i> Metrik Kelas FAKE</span>
+            <span class="pill p-r">Berita Palsu</span>
+        </div>
+        <div class="ac-body">
+            <div class="prog-row">
+                <div class="prog-hd">
+                    <span class="prog-lbl">Precision</span>
+                    <span class="prog-val">{% if performance.fake_precision %}{{ "%.1f"|format(performance.fake_precision * 100) }}%{% else %}—{% endif %}</span>
+                </div>
+                <div class="prog-track"><div class="prog-fill pf-r" style="width:{{ (performance.fake_precision or 0) * 100 }}%"></div></div>
+            </div>
+            <div class="prog-row">
+                <div class="prog-hd">
+                    <span class="prog-lbl">Recall</span>
+                    <span class="prog-val">{% if performance.fake_recall %}{{ "%.1f"|format(performance.fake_recall * 100) }}%{% else %}—{% endif %}</span>
+                </div>
+                <div class="prog-track"><div class="prog-fill pf-r" style="width:{{ (performance.fake_recall or 0) * 100 }}%"></div></div>
+            </div>
+            <div class="prog-row">
+                <div class="prog-hd">
+                    <span class="prog-lbl">F1-Score</span>
+                    <span class="prog-val">{% if performance.fake_f1 %}{{ "%.1f"|format(performance.fake_f1 * 100) }}%{% else %}—{% endif %}</span>
+                </div>
+                <div class="prog-track"><div class="prog-fill pf-r" style="width:{{ (performance.fake_f1 or 0) * 100 }}%"></div></div>
+            </div>
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e2e4f0;">
+                <div class="irow">
+                    <span class="ikey">Sensitivity (TPR)</span>
+                    <span class="ival" style="color:#2f9e44;">{% if performance.sensitivity %}{{ "%.4f"|format(performance.sensitivity) }}{% else %}—{% endif %}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REAL metrics visual -->
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-check-circle"></i> Metrik Kelas REAL</span>
+            <span class="pill p-g">Berita Valid</span>
+        </div>
+        <div class="ac-body">
+            <div class="prog-row">
+                <div class="prog-hd">
+                    <span class="prog-lbl">Precision</span>
+                    <span class="prog-val">{% if performance.real_precision %}{{ "%.1f"|format(performance.real_precision * 100) }}%{% else %}—{% endif %}</span>
+                </div>
+                <div class="prog-track"><div class="prog-fill pf-g" style="width:{{ (performance.real_precision or 0) * 100 }}%"></div></div>
+            </div>
+            <div class="prog-row">
+                <div class="prog-hd">
+                    <span class="prog-lbl">Recall</span>
+                    <span class="prog-val">{% if performance.real_recall %}{{ "%.1f"|format(performance.real_recall * 100) }}%{% else %}—{% endif %}</span>
+                </div>
+                <div class="prog-track"><div class="prog-fill pf-g" style="width:{{ (performance.real_recall or 0) * 100 }}%"></div></div>
+            </div>
+            <div class="prog-row">
+                <div class="prog-hd">
+                    <span class="prog-lbl">F1-Score</span>
+                    <span class="prog-val">{% if performance.real_f1 %}{{ "%.1f"|format(performance.real_f1 * 100) }}%{% else %}—{% endif %}</span>
+                </div>
+                <div class="prog-track"><div class="prog-fill pf-g" style="width:{{ (performance.real_f1 or 0) * 100 }}%"></div></div>
+            </div>
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e2e4f0;">
+                <div class="irow">
+                    <span class="ikey">Specificity (TNR)</span>
+                    <span class="ival" style="color:#e67700;">{% if performance.specificity %}{{ "%.4f"|format(performance.specificity) }}{% else %}—{% endif %}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Section label ─────────────────────────────────────── -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;margin-top:8px;">
+    <span style="font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8b90a8;">Visualisasi Hasil</span>
+    <div style="flex:1;height:1px;background:#e2e4f0;"></div>
+</div>
+
+<!-- ── Row 4: Confusion Matrix Chart (full) ────────────────── -->
+{% if viz and viz.confusion_matrix %}
+<div class="full-col">
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-squares-four"></i> Confusion Matrix</span>
+            <span class="pill p-b">Evaluasi Klasifikasi</span>
+        </div>
+        <iframe class="viz-frame tall" src="{{ url_for('serve_viz', filename=viz.confusion_matrix) }}"></iframe>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Row 5: Metrics Per Class Chart (full) ──────────────── -->
+{% if viz and viz.metrics_per_class %}
+<div class="full-col">
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-chart-bar"></i> Metrik Per Kelas (Visualisasi)</span>
+            <span class="pill p-v">Precision · Recall · F1</span>
+        </div>
+        <iframe class="viz-frame" src="{{ url_for('serve_viz', filename=viz.metrics_per_class) }}"></iframe>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Row 6: Visualisasi Dataset 2x2 ─────────────────────── -->
+<div class="two-col">
+    {% if viz and viz.label_distribution %}
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-chart-pie"></i> Distribusi Label Dataset</span>
+            <span class="pill p-m">FAKE vs REAL</span>
+        </div>
+        <iframe class="viz-frame" src="{{ url_for('serve_viz', filename=viz.label_distribution) }}"></iframe>
+    </div>
+    {% endif %}
+
+    {% if viz and viz.source_distribution %}
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-buildings"></i> Distribusi Sumber Berita</span>
+            <span class="pill p-m">2 Sumber</span>
+        </div>
+        <iframe class="viz-frame" src="{{ url_for('serve_viz', filename=viz.source_distribution) }}"></iframe>
+    </div>
+    {% endif %}
+
+    {% if viz and viz.top_words_fake %}
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-text-align-left"></i> Top Kata — Berita FAKE</span>
+            <span class="pill p-r">Kata Hoax</span>
+        </div>
+        <iframe class="viz-frame" src="{{ url_for('serve_viz', filename=viz.top_words_fake) }}"></iframe>
+    </div>
+    {% endif %}
+
+    {% if viz and viz.top_words_real %}
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-text-align-left"></i> Top Kata — Berita REAL</span>
+            <span class="pill p-g">Kata Valid</span>
+        </div>
+        <iframe class="viz-frame" src="{{ url_for('serve_viz', filename=viz.top_words_real) }}"></iframe>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ── Row 7: Boxplot panjang judul (full) ─────────────────── -->
+{% if viz and viz.title_length_boxplot %}
+<div class="full-col">
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-ruler"></i> Distribusi Panjang Judul Berita</span>
+            <span class="pill p-m">Boxplot</span>
+        </div>
+        <iframe class="viz-frame" src="{{ url_for('serve_viz', filename=viz.title_length_boxplot) }}"></iframe>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Row 8: Sample Test Results ─────────────────────────── -->
+{% if sample_results %}
+<div class="full-col">
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-test-tube"></i> Hasil Prediksi Test Cases</span>
+            <span class="pill p-m">{{ sample_results|length }} Sampel</span>
+        </div>
+        <div class="table-wrap">
+            <table class="sr-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Teks Berita</th>
+                        <th>Label Asli</th>
+                        <th>Prediksi</th>
+                        <th>Confidence</th>
+                        <th>Hasil</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in sample_results %}
+                    <tr>
+                        <td style="color:#8b90a8;font-size:.75rem;">{{ loop.index }}</td>
+                        <td><span class="sr-text" title="{{ r.Text or '' }}">{{ r.Text or '—' }}</span></td>
+                        <td>
+                            <span class="pill {{ 'p-r' if r.Expected == 'FAKE' else 'p-g' }}">
+                                {{ r.Expected or '—' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="pill {{ 'p-r' if r.Predicted == 'FAKE' else 'p-g' }}">
+                                {{ r.Predicted or '—' }}
+                            </span>
+                        </td>
+                        <td style="font-weight:700;color:#0f1117;">
+                            {% if r.Confidence %}
+                                {{ "%.1f"|format(r.Confidence * 100 if r.Confidence <= 1 else r.Confidence) }}%
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if r.Correct %}
+                                <span class="pill p-g"><i class="ph ph-check"></i> Benar</span>
+                            {% else %}
+                                <span class="pill p-r"><i class="ph ph-x"></i> Salah</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div style="padding:12px 18px;border-top:1px solid #e2e4f0;font-size:.78rem;color:#8b90a8;">
+            <i class="ph ph-info"></i>
+            Menampilkan {{ sample_results|length }} test case dari hasil evaluasi model pada Cell 11 notebook.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Row 9: Kesimpulan ───────────────────────────────────── -->
+<div class="full-col">
+    <div class="ac">
+        <div class="ac-hd">
+            <span class="ac-hd-t"><i class="ph ph-check-square"></i> Kesimpulan Analisis</span>
+            <span class="pill p-g"><i class="ph ph-check"></i> Outstanding</span>
+        </div>
+        <div class="ac-body">
+            <div class="conclusion">
+                Model <strong>IndoBERT fine-tuned</strong> berhasil mencapai akurasi
+                <strong>{% if performance.accuracy %}{{ "%.2f"|format(performance.accuracy * 100) }}%{% else %}—{% endif %}</strong>
+                dengan Macro F1-Score sebesar
+                <strong>{% if performance.macro_f1 %}{{ "%.2f"|format(performance.macro_f1 * 100) }}%{% else %}—{% endif %}</strong>
+                pada data uji sebanyak <strong>{{ dataset_info.test or '—' }} sampel</strong>.
+                Model menunjukkan performa yang baik dalam mendeteksi berita palsu (FAKE) dengan
+                Sensitivity <strong>{% if performance.sensitivity %}{{ "%.4f"|format(performance.sensitivity) }}{% else %}—{% endif %}</strong>
+                dan Specificity <strong>{% if performance.specificity %}{{ "%.4f"|format(performance.specificity) }}{% else %}—{% endif %}</strong>.
+                Proses fine-tuning dilakukan selama <strong>{{ model_info.epochs or '—' }} epoch</strong>
+                dengan learning rate <strong>{{ model_info.learning_rate or '—' }}</strong>
+                menggunakan dataset seimbang <strong>{{ dataset_info.balance or '50-50' }}</strong>
+                dari TurnBackHoax.id dan Antara News.
+                Hasil ini menunjukkan bahwa BERT sangat efektif untuk klasifikasi berita palsu Bahasa Indonesia
+                dan siap digunakan sebagai sistem deteksi real-time.
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Animasi progress bar
+        document.querySelectorAll('.prog-fill').forEach(el => {
+            const w = el.style.width;
+            el.style.width = '0%';
+            setTimeout(() => { el.style.width = w; }, 300);
+        });
+
+        // Stagger card reveal
+        document.querySelectorAll('.ac, .mcard').forEach((el, i) => {
+            el.style.opacity   = '0';
+            el.style.transform = 'translateY(12px)';
+            el.style.transition = `opacity .35s ease ${i * 0.04}s, transform .35s ease ${i * 0.04}s`;
+            requestAnimationFrame(() => {
+                el.style.opacity   = '1';
+                el.style.transform = 'translateY(0)';
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,13 @@
+{
+  "final_loss": 1.1021838784217834,
+  "total_steps": 60,
+  "training_time_seconds": 191.4812,
+  "num_epochs": 3,
+  "learning_rate": 2e-05,
+  "batch_size": 4,
+  "gradient_accumulation_steps": 2,
+  "effective_batch_size": 8,
+  "weight_decay": 0.01,
+  "warmup_steps": 10,
+  "max_length": 128
+}

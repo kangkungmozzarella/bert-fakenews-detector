@@ -1,0 +1,11 @@
+{
+  "test_size": 0.2,
+  "random_state": 42,
+  "stratify": true,
+  "train_size": 156,
+  "test_size_actual": 40,
+  "train_fake": 78,
+  "train_real": 78,
+  "test_fake": 20,
+  "test_real": 20
+}

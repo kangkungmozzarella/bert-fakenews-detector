@@ -1,0 +1,6 @@
+Text,Expected,Predicted,Confidence,Correct
+SALAH Video Warga Israel Mengungsi di Gurun Pasir...,FAKE,FAKE,0.8868,True
+PENIPUAN Tautan Pendaftaran CPNS Kemenhub...,FAKE,FAKE,0.8128,True
+HOAX: Video viral tsunami di Jakarta ternyata reka...,FAKE,FAKE,0.6613,True
+"Bank Indonesia mempertahankan suku bunga acuan 5,7...",REAL,REAL,0.8415,True
+Mayat Perempuan Ditemukan di Cisauk dalam Kondisi ...,REAL,REAL,0.8829,True

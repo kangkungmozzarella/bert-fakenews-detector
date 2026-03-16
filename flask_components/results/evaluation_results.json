@@ -1,0 +1,19 @@
+{
+  "accuracy": 0.875,
+  "fake_precision": 0.9411764705882353,
+  "fake_recall": 0.8,
+  "fake_f1": 0.8648648648648649,
+  "real_precision": 0.8260869565217391,
+  "real_recall": 0.95,
+  "real_f1": 0.8837209302325582,
+  "macro_f1": 0.8742928975487115,
+  "weighted_f1": 0.8742928975487114,
+  "confusion_matrix": {
+    "tn": 16,
+    "fp": 4,
+    "fn": 1,
+    "tp": 19,
+    "sensitivity": 0.95,
+    "specificity": 0.8
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "model_paths": {
+    "bert_model": "flask_components/models/bert_model",
+    "bert_tokenizer": "flask_components/models/bert_tokenizer",
+    "model_config": "flask_components/models/model_config.json"
+  },
+  "data_paths": {
+    "raw_dataset": "flask_components/data/raw_dataset.csv",
+    "balanced_dataset": "flask_components/data/balanced_dataset.csv",
+    "train_data": "flask_components/data/train_data.csv",
+    "test_data": "flask_components/data/test_data.csv",
+    "dataset_info": "flask_components/data/dataset_info.json",
+    "splitting_info": "flask_components/data/splitting_info.json",
+    "word_analysis": "flask_components/data/word_analysis.json"
+  },
+  "results_paths": {
+    "final_summary": "flask_components/results/final_summary.json",
+    "evaluation_results": "flask_components/results/evaluation_results.json",
+    "training_results": "flask_components/results/training_results.json",
+    "sample_test_results": "flask_components/results/sample_test_results.csv"
+  },
+  "visualization_paths": {
+    "label_distribution": "flask_components/visualizations/label_distribution.html",
+    "source_distribution": "flask_components/visualizations/source_distribution.html",
+    "title_length_boxplot": "flask_components/visualizations/title_length_boxplot.html",
+    "top_words_fake": "flask_components/visualizations/top_words_fake.html",
+    "top_words_real": "flask_components/visualizations/top_words_real.html",
+    "confusion_matrix": "flask_components/visualizations/confusion_matrix.html",
+    "metrics_per_class": "flask_components/visualizations/metrics_per_class.html"
+  },
+  "app_settings": {
+    "title": "BERT Fake News Detector",
+    "description": "Deteksi berita palsu berbasis IndoBERT",
+    "version": "1.0.0"
+  }
+}

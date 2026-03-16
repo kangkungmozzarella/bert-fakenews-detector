@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Admin — FakeNews Detector</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/favicon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+
+    <style>
+        :root {
+            --blue:       #3b5bdb;
+            --blue-light: #4c6ef5;
+            --blue-pale:  #edf2ff;
+            --violet:     #7048e8;
+            --ink:        #0f1117;
+            --ink-soft:   #3b3f52;
+            --ink-mute:   #8b90a8;
+            --border:     #e2e4f0;
+            --surface:    #ffffff;
+            --surface-2:  #f5f6fa;
+            --red:        #e03131;
+            --red-pale:   #fff5f5;
+            --green:      #2f9e44;
+            --green-pale: #ebfbee;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 480px;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        /* ── LEFT PANEL ──────────────────────────────── */
+        .left-panel {
+            background: var(--ink);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 48px 56px;
+            overflow: hidden;
+        }
+
+        /* Subtle dot grid */
+        .left-panel::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(255,255,255,.08) 1px, transparent 1px);
+            background-size: 32px 32px;
+            pointer-events: none;
+        }
+
+        /* Glow blobs */
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            animation: blobFloat 8s ease-in-out infinite;
+        }
+        .blob-1 {
+            width: 400px; height: 400px;
+            background: rgba(59,91,219,.18);
+            top: -80px; left: -80px;
+        }
+        .blob-2 {
+            width: 320px; height: 320px;
+            background: rgba(112,72,232,.14);
+            bottom: 60px; right: -60px;
+            animation-delay: -4s;
+        }
+        @keyframes blobFloat {
+            0%,100% { transform: translate(0,0) scale(1); }
+            50%      { transform: translate(20px,20px) scale(1.06); }
+        }
+
+        .left-top {
+            position: relative; z-index: 1;
+        }
+
+        .brand {
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none;
+        }
+        .brand-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--blue);
+            box-shadow: 0 0 0 3px rgba(59,91,219,.3);
+        }
+        .brand-name {
+            font-size: 1rem; font-weight: 800;
+            color: white; letter-spacing: -.01em;
+        }
+        .brand-name span { color: var(--blue-light); }
+
+        .left-body {
+            position: relative; z-index: 1;
+            flex: 1; display: flex;
+            flex-direction: column; justify-content: center;
+            padding: 48px 0;
+        }
+
+        .left-eyebrow {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: .75rem; font-weight: 700; letter-spacing: .1em;
+            text-transform: uppercase; color: rgba(255,255,255,.45);
+            margin-bottom: 20px;
+        }
+        .left-eyebrow::before {
+            content: ''; display: block;
+            width: 20px; height: 1px; background: currentColor;
+        }
+
+        .left-title {
+            font-size: clamp(2rem, 3.2vw, 2.8rem);
+            font-weight: 800; color: white;
+            line-height: 1.15; letter-spacing: -.03em;
+            margin-bottom: 20px;
+        }
+        .left-title em {
+            font-style: normal;
+            background: linear-gradient(135deg, #74c0fc, var(--blue-light));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .left-desc {
+            font-size: .9rem; font-weight: 400;
+            color: rgba(255,255,255,.5);
+            line-height: 1.7; max-width: 380px;
+            margin-bottom: 36px;
+        }
+
+        /* Metric chips */
+        .metric-chips {
+            display: flex; flex-wrap: wrap; gap: 10px;
+        }
+        .chip {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 14px; border-radius: 100px;
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(255,255,255,.1);
+            color: rgba(255,255,255,.8);
+            font-size: .8rem; font-weight: 600;
+            transition: background .2s;
+        }
+        .chip:hover { background: rgba(255,255,255,.1); }
+        .chip-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+        }
+        .chip-dot.blue   { background: var(--blue-light); }
+        .chip-dot.violet { background: #a78bfa; }
+        .chip-dot.cyan   { background: #67e8f9; }
+        .chip-dot.green  { background: #6ee7b7; }
+
+        .left-footer {
+            position: relative; z-index: 1;
+        }
+        .left-footer-text {
+            font-size: .78rem; color: rgba(255,255,255,.25);
+            font-weight: 400;
+        }
+
+        /* ── RIGHT PANEL ─────────────────────────────── */
+        .right-panel {
+            background: var(--surface);
+            display: flex; flex-direction: column;
+            justify-content: center;
+            padding: 48px 52px;
+            border-left: 1px solid var(--border);
+            position: relative;
+            overflow-y: auto;
+        }
+
+        /* Top accent line */
+        .right-panel::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--blue), var(--violet));
+        }
+
+        .form-header { margin-bottom: 36px; }
+        .form-header-eyebrow {
+            font-size: .75rem; font-weight: 700;
+            letter-spacing: .1em; text-transform: uppercase;
+            color: var(--blue); margin-bottom: 10px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .form-header-eyebrow i { font-size: .9rem; }
+        .form-header h1 {
+            font-size: 1.6rem; font-weight: 800;
+            color: var(--ink); letter-spacing: -.02em;
+            margin-bottom: 6px;
+        }
+        .form-header p {
+            font-size: .875rem; color: var(--ink-mute); font-weight: 400;
+        }
+
+        /* Flash messages */
+        .flash { margin-bottom: 20px; }
+        .flash-item {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 12px 14px; border-radius: 10px;
+            font-size: .85rem; font-weight: 500;
+            animation: shakeIn .4s ease;
+        }
+        .flash-item.danger {
+            background: var(--red-pale);
+            border: 1px solid rgba(224,49,49,.15);
+            color: var(--red);
+        }
+        .flash-item.success {
+            background: var(--green-pale);
+            border: 1px solid rgba(47,158,68,.15);
+            color: var(--green);
+        }
+        .flash-item.info, .flash-item.warning {
+            background: var(--blue-pale);
+            border: 1px solid rgba(59,91,219,.15);
+            color: var(--blue);
+        }
+        @keyframes shakeIn {
+            0%   { transform: translateX(-8px); opacity: 0; }
+            60%  { transform: translateX(4px); }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Form fields */
+        .field { margin-bottom: 20px; }
+        .field-label {
+            display: block;
+            font-size: .8rem; font-weight: 700;
+            color: var(--ink-soft); margin-bottom: 7px;
+            letter-spacing: .03em; text-transform: uppercase;
+        }
+        .field-wrap { position: relative; }
+        .field-icon {
+            position: absolute; left: 14px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--ink-mute); font-size: 1.05rem;
+            pointer-events: none; transition: color .2s;
+        }
+        .field-input {
+            width: 100%;
+            padding: 12px 14px 12px 42px;
+            background: var(--surface-2);
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+            font-size: .9rem; font-weight: 500;
+            color: var(--ink);
+            transition: border-color .2s, background .2s, box-shadow .2s;
+        }
+        .field-input:focus {
+            outline: none;
+            border-color: var(--blue);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59,91,219,.1);
+        }
+        .field-input:focus ~ .field-icon { color: var(--blue); }
+
+        /* Password toggle */
+        .field-toggle {
+            position: absolute; right: 14px; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none; cursor: pointer;
+            color: var(--ink-mute); font-size: 1rem;
+            padding: 2px; transition: color .2s;
+        }
+        .field-toggle:hover { color: var(--blue); }
+
+        /* Submit button */
+        .btn-login {
+            width: 100%; margin-top: 8px;
+            padding: 13px;
+            background: var(--blue);
+            color: white; border: none;
+            border-radius: 10px; cursor: pointer;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+            font-size: .9rem; font-weight: 700;
+            letter-spacing: .02em;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: background .2s, transform .2s, box-shadow .2s;
+            box-shadow: 0 2px 10px rgba(59,91,219,.3);
+            position: relative; overflow: hidden;
+        }
+        .btn-login::before {
+            content: '';
+            position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent);
+            transition: left .5s ease;
+        }
+        .btn-login:hover::before { left: 150%; }
+        .btn-login:hover {
+            background: var(--blue-light);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59,91,219,.35);
+        }
+        .btn-login:active { transform: translateY(0); }
+        .btn-login.loading {
+            pointer-events: none; opacity: .75;
+        }
+
+        /* Loading spinner inside button */
+        .btn-spinner {
+            display: none;
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Divider */
+        .form-divider {
+            display: flex; align-items: center; gap: 12px;
+            margin: 24px 0 20px;
+        }
+        .form-divider::before, .form-divider::after {
+            content: ''; flex: 1; height: 1px; background: var(--border);
+        }
+        .form-divider span {
+            font-size: .75rem; color: var(--ink-mute); font-weight: 500; white-space: nowrap;
+        }
+
+        /* Tech badges */
+        .tech-badges {
+            display: flex; flex-wrap: wrap; gap: 8px;
+        }
+        .tech-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 11px; border-radius: 100px;
+            background: var(--surface-2); border: 1px solid var(--border);
+            font-size: .75rem; font-weight: 600; color: var(--ink-soft);
+            transition: border-color .2s, background .2s;
+        }
+        .tech-badge:hover {
+            border-color: rgba(59,91,219,.3);
+            background: var(--blue-pale); color: var(--blue);
+        }
+        .tech-badge i { font-size: .85rem; }
+
+        /* Back link */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            margin-top: 24px;
+            font-size: .82rem; font-weight: 600;
+            color: var(--ink-mute); text-decoration: none;
+            transition: color .2s;
+        }
+        .back-link:hover { color: var(--blue); }
+
+        /* Responsive */
+        @media (max-width: 860px) {
+            body { grid-template-columns: 1fr; }
+            .left-panel { display: none; }
+            .right-panel {
+                padding: 40px 28px;
+                min-height: 100vh;
+                border-left: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ══ LEFT PANEL ══════════════════════════════════════════════ -->
+    <div class="left-panel">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+
+        <div class="left-top">
+            <a href="{{ url_for('homepage') }}" class="brand">
+                <div class="brand-dot"></div>
+                <span class="brand-name">FakeNews<span>Detector</span></span>
+            </a>
+        </div>
+
+        <div class="left-body">
+            <div class="left-eyebrow">Admin Dashboard</div>
+            <h2 class="left-title">
+                Sistem Deteksi<br>
+                <em>Berita Palsu</em><br>
+                Berbasis BERT
+            </h2>
+            <p class="left-desc">
+                Panel administrasi untuk memantau performa model IndoBERT,
+                melihat hasil evaluasi, dan menganalisis distribusi dataset
+                deteksi berita palsu Bahasa Indonesia.
+            </p>
+
+            <div class="metric-chips">
+                <div class="chip">
+                    <div class="chip-dot blue"></div>
+                    {{ "%.2f"|format((performance.accuracy or 0.875) * 100) }}% Accuracy
+                </div>
+                <div class="chip">
+                    <div class="chip-dot violet"></div>
+                    {{ "%.2f"|format((performance.macro_f1 or 0.8743) * 100) }}% Macro F1
+                </div>
+                <div class="chip">
+                    <div class="chip-dot cyan"></div>
+                    {{ dataset_info.total or 248 }} Data Latih
+                </div>
+                <div class="chip">
+                    <div class="chip-dot green"></div>
+                    IndoBERT Fine-tuned
+                </div>
+            </div>
+        </div>
+
+        <div class="left-footer">
+            <p class="left-footer-text">
+                &copy; {{ current_year }} · Penelitian Deteksi Berita Palsu Menggunakan BERT
+            </p>
+        </div>
+    </div>
+
+    <!-- ══ RIGHT PANEL ═════════════════════════════════════════════ -->
+    <div class="right-panel">
+
+        <div class="form-header">
+            <div class="form-header-eyebrow">
+                <i class="ph ph-lock-key"></i> Akses Admin
+            </div>
+            <h1>Masuk ke Dashboard</h1>
+            <p>Masukkan kredensial admin untuk mengakses panel pengelolaan sistem.</p>
+        </div>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash">
+                    {% for category, message in messages %}
+                        <div class="flash-item {{ category }}">
+                            <i class="ph ph-{{ 'warning-circle' if category == 'danger' else 'check-circle' if category == 'success' else 'info' }}"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('login') }}" method="POST" id="loginForm" autocomplete="off">
+
+            <div class="field">
+                <label class="field-label" for="username">Username</label>
+                <div class="field-wrap">
+                    <i class="ph ph-user field-icon"></i>
+                    <input
+                        class="field-input"
+                        type="text"
+                        id="username"
+                        name="username"
+                        placeholder="Masukkan username admin"
+                        required
+                        autocomplete="username"
+                    >
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="field-label" for="password">Password</label>
+                <div class="field-wrap">
+                    <i class="ph ph-lock-simple field-icon"></i>
+                    <input
+                        class="field-input"
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Masukkan password"
+                        required
+                        autocomplete="current-password"
+                        style="padding-right: 42px;"
+                    >
+                    <button type="button" class="field-toggle" id="togglePwd" aria-label="Toggle password">
+                        <i class="ph ph-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-login" id="loginBtn">
+                <div class="btn-spinner" id="btnSpinner"></div>
+                <i class="ph ph-sign-in" id="btnIcon"></i>
+                <span id="btnText">Masuk ke Dashboard</span>
+            </button>
+
+        </form>
+
+        <div class="form-divider">
+            <span>Teknologi yang digunakan</span>
+        </div>
+
+        <div class="tech-badges">
+            <span class="tech-badge"><i class="ph ph-brain"></i>IndoBERT</span>
+            <span class="tech-badge"><i class="ph ph-fire"></i>PyTorch</span>
+            <span class="tech-badge"><i class="ph ph-flask"></i>Flask</span>
+            <span class="tech-badge"><i class="ph ph-chart-line-up"></i>Plotly</span>
+            <span class="tech-badge"><i class="ph ph-newspaper"></i>NLP Bahasa Indonesia</span>
+        </div>
+
+        <a href="{{ url_for('homepage') }}" class="back-link">
+            <i class="ph ph-arrow-left"></i> Kembali ke Beranda
+        </a>
+
+    </div>
+
+    <script>
+        // ── Password toggle ──────────────────────────────────────
+        document.getElementById('togglePwd').addEventListener('click', function () {
+            const pwd  = document.getElementById('password');
+            const icon = document.getElementById('eyeIcon');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                icon.className = 'ph ph-eye-slash';
+            } else {
+                pwd.type = 'password';
+                icon.className = 'ph ph-eye';
+            }
+        });
+
+        // ── Loading state on submit ──────────────────────────────
+        document.getElementById('loginForm').addEventListener('submit', function () {
+            const btn     = document.getElementById('loginBtn');
+            const spinner = document.getElementById('btnSpinner');
+            const icon    = document.getElementById('btnIcon');
+            const text    = document.getElementById('btnText');
+
+            btn.classList.add('loading');
+            spinner.style.display = 'block';
+            icon.style.display    = 'none';
+            text.textContent      = 'Memproses…';
+
+            // Auto-reset fallback
+            setTimeout(() => {
+                btn.classList.remove('loading');
+                spinner.style.display = 'none';
+                icon.style.display    = '';
+                text.textContent      = 'Masuk ke Dashboard';
+            }, 10000);
+        });
+
+        // ── Auto-hide flash messages ─────────────────────────────
+        document.querySelectorAll('.flash-item').forEach(el => {
+            setTimeout(() => {
+                el.style.transition = 'opacity .5s ease, transform .5s ease';
+                el.style.opacity    = '0';
+                el.style.transform  = 'translateX(-12px)';
+                setTimeout(() => el.remove(), 500);
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

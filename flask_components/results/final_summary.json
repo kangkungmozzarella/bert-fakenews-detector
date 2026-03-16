@@ -1,0 +1,32 @@
+{
+  "model_info": {
+    "model_name": "indolem/indobert-base-uncased",
+    "num_labels": 2,
+    "label_map": {
+      "0": "FAKE",
+      "1": "REAL"
+    },
+    "max_length": 128,
+    "epochs": 3,
+    "learning_rate": 2e-05,
+    "batch_size": 4
+  },
+  "dataset_info": {
+    "total": 196,
+    "train": 156,
+    "test": 40,
+    "balance": "50-50"
+  },
+  "performance": {
+    "accuracy": 0.875,
+    "macro_f1": 0.8742928975487115,
+    "fake_precision": 0.9411764705882353,
+    "fake_recall": 0.8,
+    "fake_f1": 0.8648648648648649,
+    "real_precision": 0.8260869565217391,
+    "real_recall": 0.95,
+    "real_f1": 0.8837209302325582,
+    "sensitivity": 0.95,
+    "specificity": 0.8
+  }
+}

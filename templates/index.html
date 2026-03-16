@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FakeNews Detector — BERT Bahasa Indonesia</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='images/favicon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+
+    <style>
+        :root {
+            --ink:        #0f1117;
+            --ink-soft:   #3b3f52;
+            --ink-mute:   #8b90a8;
+            --surface:    #ffffff;
+            --surface-2:  #f5f6fa;
+            --surface-3:  #eef0f8;
+            --border:     #e2e4f0;
+            --blue:       #3b5bdb;
+            --blue-light: #4c6ef5;
+            --blue-pale:  #edf2ff;
+            --violet:     #7048e8;
+            --violet-pale:#f3f0ff;
+            --red:        #e03131;
+            --red-pale:   #fff5f5;
+            --green:      #2f9e44;
+            --green-pale: #ebfbee;
+            --shadow-sm:  0 1px 3px rgba(15,17,23,.06), 0 1px 2px rgba(15,17,23,.04);
+            --shadow-md:  0 4px 16px rgba(15,17,23,.08), 0 2px 6px rgba(15,17,23,.04);
+            --shadow-lg:  0 12px 40px rgba(15,17,23,.10), 0 4px 12px rgba(15,17,23,.05);
+            --r-sm: 8px;
+            --r-md: 14px;
+            --r-lg: 20px;
+            --r-xl: 28px;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+            font-size: 15px;
+            line-height: 1.65;
+            color: var(--ink);
+            background: var(--surface);
+            overflow-x: hidden;
+        }
+
+        h1,h2,h3,h4,h5,h6 { font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; line-height: 1.2; }
+
+        /* ─── NAVBAR ─────────────────────────────────────── */
+        .nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 900;
+            height: 64px;
+            display: flex; align-items: center;
+            background: rgba(255,255,255,.88);
+            backdrop-filter: blur(16px) saturate(180%);
+            border-bottom: 1px solid var(--border);
+            transition: box-shadow .3s;
+        }
+        .nav.scrolled { box-shadow: var(--shadow-md); }
+        .nav-inner {
+            width: 100%; max-width: 1200px; margin: 0 auto;
+            padding: 0 24px;
+            display: flex; align-items: center; gap: 32px;
+        }
+        .nav-brand {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+            font-weight: 800; font-size: 1rem;
+            color: var(--ink); text-decoration: none;
+            display: flex; align-items: center; gap: 8px;
+            flex-shrink: 0;
+        }
+        .nav-brand-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--blue); flex-shrink: 0;
+            box-shadow: 0 0 0 3px var(--blue-pale);
+        }
+        .nav-links {
+            display: flex; align-items: center; gap: 4px;
+            list-style: none; margin-left: auto;
+        }
+        .nav-links a {
+            display: block; padding: 6px 14px; border-radius: var(--r-sm);
+            color: var(--ink-soft); text-decoration: none;
+            font-size: .875rem; font-weight: 500;
+            transition: color .2s, background .2s;
+        }
+        .nav-links a:hover { color: var(--blue); background: var(--blue-pale); }
+        .nav-cta {
+            margin-left: 8px;
+            padding: 8px 18px; border-radius: var(--r-sm);
+            background: var(--blue); color: white !important;
+            font-weight: 600; font-size: .875rem;
+            text-decoration: none; border: none; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: background .2s, transform .2s, box-shadow .2s;
+            box-shadow: 0 2px 8px rgba(59,91,219,.3);
+        }
+        .nav-cta:hover { background: var(--blue-light) !important; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(59,91,219,.35); }
+
+        /* hamburger */
+        .nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 4px; margin-left: auto; }
+        .nav-toggle span {
+            display: block; width: 22px; height: 2px;
+            background: var(--ink); border-radius: 2px;
+            transition: .3s; margin: 4px 0;
+        }
+
+        /* ─── CONTAINER ──────────────────────────────────── */
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+        /* ─── HERO ───────────────────────────────────────── */
+        .hero {
+            padding-top: 120px; padding-bottom: 80px;
+            background: var(--surface);
+            position: relative; overflow: hidden;
+        }
+        .hero-bg {
+            position: absolute; inset: 0; pointer-events: none; z-index: 0;
+            background:
+                radial-gradient(ellipse 700px 500px at 80% 0%, rgba(59,91,219,.06) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 400px at 10% 80%, rgba(112,72,232,.05) 0%, transparent 70%);
+        }
+        /* grid lines */
+        .hero-bg::after {
+            content: '';
+            position: absolute; inset: 0;
+            background-image:
+                linear-gradient(to right, rgba(59,91,219,.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(59,91,219,.04) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse 80% 80% at 50% 0%, black 0%, transparent 100%);
+        }
+        .hero-inner {
+            position: relative; z-index: 1;
+            display: grid; grid-template-columns: 1fr 420px;
+            gap: 64px; align-items: center;
+        }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 12px; border-radius: 100px;
+            background: var(--blue-pale); border: 1px solid rgba(59,91,219,.2);
+            color: var(--blue); font-size: .8rem; font-weight: 600;
+            margin-bottom: 20px;
+            animation: fadeUp .6s ease both;
+        }
+        .hero-badge i { font-size: .9rem; }
+        .hero h1 {
+            font-size: clamp(2.2rem, 4vw, 3.2rem);
+            font-weight: 800;
+            letter-spacing: -.02em;
+            color: var(--ink);
+            margin-bottom: 18px;
+            animation: fadeUp .6s .1s ease both;
+        }
+        .hero h1 em {
+            font-style: normal;
+            background: linear-gradient(135deg, var(--blue) 0%, var(--violet) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-desc {
+            font-size: 1.05rem; color: var(--ink-soft); max-width: 520px;
+            margin-bottom: 32px; font-weight: 300;
+            animation: fadeUp .6s .2s ease both;
+        }
+        .hero-actions {
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            animation: fadeUp .6s .3s ease both;
+        }
+        .btn-primary {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 11px 24px; border-radius: var(--r-sm);
+            background: var(--blue); color: white;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 600; font-size: .9rem;
+            text-decoration: none; border: none; cursor: pointer;
+            transition: background .2s, transform .2s, box-shadow .2s;
+            box-shadow: 0 2px 10px rgba(59,91,219,.3);
+        }
+        .btn-primary:hover { background: var(--blue-light); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,91,219,.35); }
+        .btn-ghost {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 11px 24px; border-radius: var(--r-sm);
+            background: transparent; color: var(--ink-soft);
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 600; font-size: .9rem;
+            text-decoration: none; border: 1.5px solid var(--border); cursor: pointer;
+            transition: border-color .2s, color .2s, background .2s;
+        }
+        .btn-ghost:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-pale); }
+
+        /* Stats grid */
+        .hero-stats {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 12px; margin-top: 36px;
+            animation: fadeUp .6s .4s ease both;
+        }
+        .stat-item {
+            padding: 16px 18px; border-radius: var(--r-md);
+            background: var(--surface-2); border: 1px solid var(--border);
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .stat-item:hover { border-color: rgba(59,91,219,.25); box-shadow: var(--shadow-sm); }
+        .stat-num {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+            font-size: 1.6rem; font-weight: 800;
+            color: var(--blue); line-height: 1;
+        }
+        .stat-lbl { font-size: .8rem; color: var(--ink-mute); margin-top: 3px; font-weight: 400; }
+
+        /* Hero visual card */
+        .hero-visual {
+            animation: fadeUp .6s .25s ease both;
+        }
+        .hero-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-xl);
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+            position: relative; overflow: hidden;
+        }
+        .hero-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--blue), var(--violet));
+        }
+        .hcard-title {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 700;
+            font-size: .95rem; color: var(--ink); margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .hcard-input {
+            background: var(--surface-2); border: 1.5px solid var(--border);
+            border-radius: var(--r-sm); padding: 12px 14px;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-size: .9rem;
+            color: var(--ink); width: 100%; resize: none;
+            transition: border-color .2s;
+            height: 90px;
+        }
+        .hcard-input:focus { outline: none; border-color: var(--blue); }
+        .hcard-btn {
+            width: 100%; margin-top: 12px;
+            padding: 11px; border-radius: var(--r-sm);
+            background: var(--blue); color: white;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 600; font-size: .9rem;
+            border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: background .2s, transform .2s;
+        }
+        .hcard-btn:hover { background: var(--blue-light); transform: translateY(-1px); }
+        .hcard-result {
+            margin-top: 14px; padding: 14px;
+            border-radius: var(--r-md); display: none;
+            animation: fadeUp .3s ease;
+        }
+        .hcard-result.fake {
+            background: var(--red-pale); border: 1px solid rgba(224,49,49,.15);
+        }
+        .hcard-result.real {
+            background: var(--green-pale); border: 1px solid rgba(47,158,68,.15);
+        }
+        .result-label {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 800; font-size: 1.1rem;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .result-label.fake { color: var(--red); }
+        .result-label.real { color: var(--green); }
+        .result-conf { font-size: .8rem; color: var(--ink-mute); margin-top: 6px; }
+        .conf-bar { height: 5px; border-radius: 3px; background: var(--border); margin-top: 8px; overflow: hidden; }
+        .conf-fill { height: 100%; border-radius: 3px; transition: width .8s cubic-bezier(.22,1,.36,1); }
+        .conf-fill.fake { background: var(--red); }
+        .conf-fill.real { background: var(--green); }
+
+        /* ─── SECTION WRAPPER ────────────────────────────── */
+        .section { padding: 88px 0; }
+        .section-alt { background: var(--surface-2); }
+        .section-head { text-align: center; margin-bottom: 56px; }
+        .section-eyebrow {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+            color: var(--blue); margin-bottom: 12px;
+        }
+        .section-eyebrow::before, .section-eyebrow::after {
+            content: ''; display: block; width: 24px; height: 1px; background: currentColor; opacity: .5;
+        }
+        .section-title { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; color: var(--ink); margin-bottom: 12px; }
+        .section-desc { font-size: 1rem; color: var(--ink-soft); max-width: 540px; margin: 0 auto; font-weight: 300; }
+
+        /* ─── DEMO SECTION ───────────────────────────────── */
+        .demo-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-xl);
+            padding: 36px 40px;
+            box-shadow: var(--shadow-md);
+            max-width: 760px; margin: 0 auto;
+            position: relative; overflow: hidden;
+        }
+        .demo-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--blue), var(--violet));
+        }
+        .demo-label {
+            display: block; font-size: .8rem; font-weight: 600;
+            color: var(--ink-soft); margin-bottom: 6px; letter-spacing: .03em;
+        }
+        .demo-textarea {
+            width: 100%; background: var(--surface-2);
+            border: 1.5px solid var(--border); border-radius: var(--r-md);
+            padding: 14px 16px; resize: none; height: 120px;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-size: .95rem; color: var(--ink);
+            transition: border-color .2s;
+        }
+        .demo-textarea:focus { outline: none; border-color: var(--blue); background: white; }
+        .demo-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+        .btn-analyze {
+            padding: 11px 28px; border-radius: var(--r-sm);
+            background: var(--blue); color: white; border: none; cursor: pointer;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 700; font-size: .9rem;
+            display: inline-flex; align-items: center; gap: 8px;
+            transition: background .2s, transform .2s, box-shadow .2s;
+            box-shadow: 0 2px 10px rgba(59,91,219,.3);
+        }
+        .btn-analyze:hover { background: var(--blue-light); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,91,219,.35); }
+        .btn-sample {
+            padding: 9px 16px; border-radius: var(--r-sm);
+            background: transparent; color: var(--ink-soft);
+            border: 1.5px solid var(--border); cursor: pointer;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 500; font-size: .82rem;
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: all .2s;
+        }
+        .btn-sample:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-pale); }
+        .btn-sample.fake-sample:hover { border-color: var(--red); color: var(--red); background: var(--red-pale); }
+        .btn-sample.real-sample:hover { border-color: var(--green); color: var(--green); background: var(--green-pale); }
+
+        /* loading */
+        .demo-loading { display: none; text-align: center; padding: 24px 0; }
+        .spinner-dots { display: flex; justify-content: center; gap: 6px; }
+        .spinner-dots span {
+            width: 8px; height: 8px; border-radius: 50%; background: var(--blue);
+            animation: bounce 1.2s ease-in-out infinite;
+        }
+        .spinner-dots span:nth-child(2) { animation-delay: .2s; }
+        .spinner-dots span:nth-child(3) { animation-delay: .4s; }
+        @keyframes bounce { 0%,80%,100% { transform: scale(.8); opacity:.5; } 40% { transform: scale(1.2); opacity:1; } }
+        .demo-loading p { margin-top: 10px; font-size: .85rem; color: var(--ink-mute); }
+
+        /* result full */
+        .demo-result { display: none; margin-top: 20px; border-radius: var(--r-lg); padding: 22px 24px; animation: fadeUp .4s ease; }
+        .demo-result.fake { background: var(--red-pale); border: 1.5px solid rgba(224,49,49,.2); }
+        .demo-result.real { background: var(--green-pale); border: 1.5px solid rgba(47,158,68,.2); }
+        .dr-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .dr-verdict {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 800; font-size: 1.4rem;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .dr-verdict.fake { color: var(--red); }
+        .dr-verdict.real { color: var(--green); }
+        .verdict-icon { font-size: 1.6rem; }
+        .dr-conf-box {
+            padding: 8px 16px; border-radius: var(--r-sm);
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 700; font-size: .9rem;
+        }
+        .dr-conf-box.fake { background: rgba(224,49,49,.12); color: var(--red); }
+        .dr-conf-box.real { background: rgba(47,158,68,.12); color: var(--green); }
+        .dr-bar-wrap { margin-top: 16px; }
+        .dr-bar-label { display: flex; justify-content: space-between; font-size: .8rem; color: var(--ink-mute); margin-bottom: 5px; }
+        .dr-bar { height: 8px; border-radius: 4px; background: rgba(0,0,0,.06); overflow: hidden; }
+        .dr-fill { height: 100%; border-radius: 4px; transition: width 1s cubic-bezier(.22,1,.36,1); }
+        .dr-fill.fake { background: linear-gradient(90deg, var(--red), #ff6b6b); }
+        .dr-fill.real { background: linear-gradient(90deg, var(--green), #51cf66); }
+        .dr-desc { margin-top: 12px; font-size: .85rem; color: var(--ink-soft); }
+
+        /* ─── METRICS STRIP ──────────────────────────────── */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        .metric-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 24px 20px;
+            text-align: center;
+            transition: border-color .2s, box-shadow .2s, transform .2s;
+        }
+        .metric-card:hover { border-color: rgba(59,91,219,.25); box-shadow: var(--shadow-md); transform: translateY(-3px); }
+        .metric-icon {
+            width: 48px; height: 48px; border-radius: var(--r-sm);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 1.4rem; margin-bottom: 12px;
+        }
+        .metric-icon.blue { background: var(--blue-pale); color: var(--blue); }
+        .metric-icon.violet { background: var(--violet-pale); color: var(--violet); }
+        .metric-icon.green { background: var(--green-pale); color: var(--green); }
+        .metric-icon.red { background: var(--red-pale); color: var(--red); }
+        .metric-num {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-size: 1.7rem; font-weight: 800;
+            color: var(--ink); line-height: 1;
+        }
+        .metric-label { font-size: .8rem; color: var(--ink-mute); margin-top: 4px; }
+
+        /* ─── METHODOLOGY ────────────────────────────────── */
+        .method-steps {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        .method-step {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 28px 24px;
+            position: relative; overflow: hidden;
+            transition: border-color .2s, box-shadow .2s, transform .2s;
+        }
+        .method-step:hover { border-color: rgba(59,91,219,.25); box-shadow: var(--shadow-md); transform: translateY(-3px); }
+        .method-step::after {
+            content: attr(data-step);
+            position: absolute; top: -10px; right: 16px;
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-size: 4rem; font-weight: 800;
+            color: var(--surface-3); line-height: 1;
+            z-index: 0; pointer-events: none;
+        }
+        .method-step > * { position: relative; z-index: 1; }
+        .step-num {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: var(--blue-pale); color: var(--blue);
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 800; font-size: .9rem;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 14px;
+        }
+        .step-title { font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+        .step-desc { font-size: .85rem; color: var(--ink-soft); line-height: 1.6; }
+        .step-tag {
+            display: inline-block; margin-top: 10px;
+            padding: 3px 10px; border-radius: 100px;
+            background: var(--blue-pale); color: var(--blue);
+            font-size: .75rem; font-weight: 600;
+        }
+
+        /* ─── VISUALISASI ────────────────────────────────── */
+        .viz-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .viz-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--r-lg);
+            padding: 0; overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow .2s, transform .2s;
+        }
+        .viz-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .viz-card-head {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .viz-card-title {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 700; font-size: .9rem; color: var(--ink);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .viz-card-title i { color: var(--blue); }
+        .viz-badge {
+            font-size: .72rem; font-weight: 600; padding: 3px 9px;
+            border-radius: 100px; background: var(--blue-pale); color: var(--blue);
+        }
+        .viz-frame {
+            width: 100%; height: 320px; border: none; display: block;
+        }
+        .viz-card.span2 { grid-column: span 2; }
+        .viz-card.span2 .viz-frame { height: 360px; }
+
+        /* ─── ABOUT / TECH ───────────────────────────────── */
+        .tech-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .tech-item {
+            display: flex; align-items: flex-start; gap: 14px;
+            padding: 20px; border-radius: var(--r-md);
+            background: var(--surface); border: 1px solid var(--border);
+            transition: border-color .2s, transform .2s;
+        }
+        .tech-item:hover { border-color: rgba(59,91,219,.25); transform: translateX(3px); }
+        .tech-icon {
+            width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+            background: var(--blue-pale); color: var(--blue);
+            display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+        }
+        .tech-name { font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 700; font-size: .9rem; color: var(--ink); }
+        .tech-desc { font-size: .82rem; color: var(--ink-mute); margin-top: 2px; }
+
+        /* ─── FOOTER ─────────────────────────────────────── */
+        .footer {
+            background: var(--ink); color: rgba(255,255,255,.7);
+            padding: 56px 0 32px;
+        }
+        .footer-grid {
+            display: grid; grid-template-columns: 1.5fr 1fr 1fr;
+            gap: 48px; padding-bottom: 40px;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+            margin-bottom: 28px;
+        }
+        .footer-brand {
+            font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 800; font-size: 1.1rem;
+            color: white; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+        }
+        .footer-brand-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); flex-shrink: 0; }
+        .footer-desc { font-size: .85rem; line-height: 1.7; max-width: 300px; }
+        .footer-heading { font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif; font-weight: 700; font-size: .85rem; color: white; margin-bottom: 14px; letter-spacing: .04em; text-transform: uppercase; }
+        .footer-list { list-style: none; }
+        .footer-list li { margin-bottom: 8px; }
+        .footer-list a { color: rgba(255,255,255,.6); text-decoration: none; font-size: .85rem; transition: color .2s; }
+        .footer-list a:hover { color: white; }
+        .footer-list span { color: rgba(255,255,255,.6); font-size: .85rem; }
+        .footer-bottom {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 12px;
+            font-size: .82rem;
+        }
+        .footer-copy { color: rgba(255,255,255,.4); }
+
+        /* ─── ANIMATIONS ─────────────────────────────────── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .reveal {
+            opacity: 0; transform: translateY(28px);
+            transition: opacity .6s ease, transform .6s ease;
+        }
+        .reveal.visible { opacity: 1; transform: none; }
+
+        /* ─── RESPONSIVE ─────────────────────────────────── */
+        @media (max-width: 1024px) {
+            .hero-inner { grid-template-columns: 1fr; gap: 40px; }
+            .hero-visual { display: none; }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .method-steps { grid-template-columns: repeat(2, 1fr); }
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 768px) {
+            .nav-links, .nav-cta { display: none; }
+            .nav-toggle { display: block; }
+            .nav-mobile {
+                display: none; flex-direction: column;
+                position: fixed; top: 64px; left: 0; right: 0; bottom: 0;
+                background: white; padding: 24px;
+                border-top: 1px solid var(--border);
+            }
+            .nav-mobile.open { display: flex; }
+            .nav-mobile a {
+                padding: 14px 0; border-bottom: 1px solid var(--border);
+                color: var(--ink); text-decoration: none; font-weight: 500;
+            }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .method-steps { grid-template-columns: 1fr; }
+            .tech-grid { grid-template-columns: 1fr; }
+            .viz-grid { grid-template-columns: 1fr; }
+            .viz-card.span2 { grid-column: span 1; }
+            .demo-card { padding: 24px 20px; }
+            .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+            .hero-stats { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ NAVBAR -->
+<nav class="nav" id="navbar">
+    <div class="nav-inner">
+        <a class="nav-brand" href="#beranda">
+            <div class="nav-brand-dot"></div>
+            FakeNews<span style="color:var(--blue)">Detector</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#beranda">Beranda</a></li>
+            <li><a href="#demo">Demo</a></li>
+            <li><a href="#metodologi">Metodologi</a></li>
+            <li><a href="#visualisasi">Dataset</a></li>
+            <li><a href="#tentang">Tentang</a></li>
+        </ul>
+        <a href="{{ url_for('login') }}" class="nav-cta">
+            <i class="ph ph-sign-in"></i> Login Admin
+        </a>
+        <button class="nav-toggle" id="navToggle" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</nav>
+
+<!-- Mobile nav -->
+<div class="nav-mobile" id="navMobile">
+    <a href="#beranda" onclick="closeMenu()">Beranda</a>
+    <a href="#demo" onclick="closeMenu()">Demo Prediksi</a>
+    <a href="#metodologi" onclick="closeMenu()">Metodologi</a>
+    <a href="#visualisasi" onclick="closeMenu()">Dataset</a>
+    <a href="#tentang" onclick="closeMenu()">Tentang</a>
+    <a href="{{ url_for('login') }}" style="color:var(--blue);margin-top:8px;">Login Admin →</a>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ HERO -->
+<section id="beranda" class="hero">
+    <div class="hero-bg"></div>
+    <div class="container">
+        <div class="hero-inner">
+            <div class="hero-text">
+                <div class="hero-badge">
+                    <i class="ph ph-sparkle"></i>
+                    Berbasis IndoBERT · NLP Bahasa Indonesia
+                </div>
+                <h1>
+                    Deteksi <em>Berita Palsu</em><br>dengan Kecerdasan Buatan
+                </h1>
+                <p class="hero-desc">
+                    Sistem deteksi berita palsu pada platform berita online menggunakan metode
+                    <strong>Bidirectional Encoder Representations from Transformers (BERT)</strong>
+                    yang dilatih khusus untuk Bahasa Indonesia.
+                </p>
+                <div class="hero-actions">
+                    <a href="#demo" class="btn-primary">
+                        <i class="ph ph-magnifying-glass"></i> Coba Deteksi Sekarang
+                    </a>
+                    <a href="#metodologi" class="btn-ghost">
+                        <i class="ph ph-book-open"></i> Pelajari Metodologi
+                    </a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <div class="stat-num">{{ "%.2f"|format((performance.accuracy or 0.875) * 100) }}%</div>
+                        <div class="stat-lbl">Akurasi Model</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num">{{ "%.2f"|format((performance.macro_f1 or 0.8743) * 100) }}%</div>
+                        <div class="stat-lbl">Macro F1-Score</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num">{{ dataset_info.total or 248 }}</div>
+                        <div class="stat-lbl">Total Data Latih</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num">{{ model_info.epochs or 3 }} Epoch</div>
+                        <div class="stat-lbl">Fine-Tuning</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mini demo card -->
+            <div class="hero-visual">
+                <div class="hero-card">
+                    <div class="hcard-title">
+                        <i class="ph ph-newspaper" style="color:var(--blue)"></i>
+                        Cek Judul Berita
+                    </div>
+                    <textarea class="hcard-input" id="heroInput" placeholder="Masukkan judul berita yang ingin dicek…"></textarea>
+                    <button class="hcard-btn" onclick="heroPredict()">
+                        <i class="ph ph-magnifying-glass"></i> Analisis
+                    </button>
+                    <div class="hcard-result" id="heroResult">
+                        <div class="result-label" id="heroLabel"></div>
+                        <div class="result-conf" id="heroConf"></div>
+                        <div class="conf-bar">
+                            <div class="conf-fill" id="heroFill" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ METRICS -->
+<section class="section section-alt">
+    <div class="container">
+        <div class="metrics-grid">
+            <div class="metric-card reveal">
+                <div class="metric-icon blue"><i class="ph ph-chart-bar"></i></div>
+                <div class="metric-num">{{ "%.1f"|format((performance.accuracy or 0.875) * 100) }}%</div>
+                <div class="metric-label">Accuracy</div>
+            </div>
+            <div class="metric-card reveal">
+                <div class="metric-icon violet"><i class="ph ph-intersect"></i></div>
+                <div class="metric-num">{{ "%.1f"|format((performance.macro_f1 or 0.8743) * 100) }}%</div>
+                <div class="metric-label">Macro F1-Score</div>
+            </div>
+            <div class="metric-card reveal">
+                <div class="metric-icon green"><i class="ph ph-check-circle"></i></div>
+                <div class="metric-num">{{ "%.1f"|format((performance.fake_precision or 0.88) * 100) }}%</div>
+                <div class="metric-label">Precision FAKE</div>
+            </div>
+            <div class="metric-card reveal">
+                <div class="metric-icon red"><i class="ph ph-warning-circle"></i></div>
+                <div class="metric-num">{{ "%.1f"|format((performance.fake_recall or 0.86) * 100) }}%</div>
+                <div class="metric-label">Recall FAKE</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ DEMO -->
+<section id="demo" class="section">
+    <div class="container">
+        <div class="section-head">
+            <div class="section-eyebrow">Demo Langsung</div>
+            <h2 class="section-title">Coba Deteksi Berita Sekarang</h2>
+            <p class="section-desc">Masukkan judul berita yang ingin Anda verifikasi dan biarkan model BERT menganalisisnya secara real-time.</p>
+        </div>
+
+        <div class="demo-card reveal">
+            <label class="demo-label" for="demoInput">
+                <i class="ph ph-text-aa me-1"></i> Judul Berita
+            </label>
+            <textarea
+                class="demo-textarea"
+                id="demoInput"
+                placeholder="Contoh: SALAH Video Pengakuan Kekalahan Israel…&#10;atau: Bank Indonesia mempertahankan suku bunga acuan 5,75 persen"
+            ></textarea>
+
+            <div class="demo-actions">
+                <button class="btn-analyze" onclick="demoPredict()">
+                    <i class="ph ph-magnifying-glass"></i> Analisis Berita
+                </button>
+                <button class="btn-sample fake-sample" onclick="fillSample('fake')">
+                    <i class="ph ph-x-circle"></i> Contoh FAKE
+                </button>
+                <button class="btn-sample real-sample" onclick="fillSample('real')">
+                    <i class="ph ph-check-circle"></i> Contoh REAL
+                </button>
+                <button class="btn-sample" onclick="clearDemo()">
+                    <i class="ph ph-eraser"></i> Hapus
+                </button>
+            </div>
+
+            <div class="demo-loading" id="demoLoading">
+                <div class="spinner-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <p>Model BERT sedang menganalisis teks…</p>
+            </div>
+
+            <div class="demo-result" id="demoResult">
+                <div class="dr-header">
+                    <div class="dr-verdict" id="drVerdict"></div>
+                    <div class="dr-conf-box" id="drConfBox"></div>
+                </div>
+                <div class="dr-bar-wrap">
+                    <div class="dr-bar-label">
+                        <span>Confidence Score</span>
+                        <span id="drConfPct"></span>
+                    </div>
+                    <div class="dr-bar">
+                        <div class="dr-fill" id="drFill" style="width:0%"></div>
+                    </div>
+                </div>
+                <p class="dr-desc" id="drDesc"></p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ METODOLOGI -->
+<section id="metodologi" class="section section-alt">
+    <div class="container">
+        <div class="section-head">
+            <div class="section-eyebrow">Metodologi</div>
+            <h2 class="section-title">Arsitektur & Alur Penelitian</h2>
+            <p class="section-desc">Enam tahap sistematis dari pengumpulan data hingga deployment web aplikasi.</p>
+        </div>
+
+        <div class="method-steps">
+            <div class="method-step reveal" data-step="01">
+                <div class="step-num">01</div>
+                <div class="step-title">Pengumpulan Data</div>
+                <div class="step-desc">{{ dataset_info.total or 248 }} judul berita dikumpulkan dari dua sumber: <strong>TurnBackHoax.id</strong> (berita FAKE) dan <strong>Antara News</strong> (berita REAL) dengan proporsi seimbang 50:50.</div>
+                <span class="step-tag">{{ dataset_info.total or 248 }} data · 2 kelas</span>
+            </div>
+            <div class="method-step reveal" data-step="02">
+                <div class="step-num">02</div>
+                <div class="step-title">Pra-pemrosesan Teks</div>
+                <div class="step-desc">Pembersihan teks, tokenisasi menggunakan <strong>IndoBERT Tokenizer</strong>, padding, truncation hingga max_length {{ model_info.max_length or 128 }} token, dan konversi ke format tensor PyTorch.</div>
+                <span class="step-tag">max_length {{ model_info.max_length or 128 }} token</span>
+            </div>
+            <div class="method-step reveal" data-step="03">
+                <div class="step-num">03</div>
+                <div class="step-title">Split Dataset</div>
+                <div class="step-desc">Dataset dibagi dengan rasio <strong>80:20</strong> — {{ dataset_info.train or 198 }} data untuk pelatihan dan {{ dataset_info.test or 50 }} data untuk pengujian menggunakan stratified split.</div>
+                <span class="step-tag">Train {{ dataset_info.train or 198 }} · Test {{ dataset_info.test or 50 }}</span>
+            </div>
+            <div class="method-step reveal" data-step="04">
+                <div class="step-num">04</div>
+                <div class="step-title">Fine-tuning BERT</div>
+                <div class="step-desc">Pre-trained model <strong>IndoBERT</strong> di-fine-tune dengan {{ model_info.epochs or 3 }} epoch, learning rate {{ model_info.learning_rate or '2e-5' }}, dan batch size {{ model_info.batch_size or 4 }} menggunakan HuggingFace Trainer API.</div>
+                <span class="step-tag">{{ model_info.epochs or 3 }} epoch · lr {{ model_info.learning_rate or '2e-5' }}</span>
+            </div>
+            <div class="method-step reveal" data-step="05">
+                <div class="step-num">05</div>
+                <div class="step-title">Evaluasi Model</div>
+                <div class="step-desc">Performa diukur menggunakan <strong>Accuracy, Precision, Recall, F1-Score</strong>, Confusion Matrix, serta Sensitivity dan Specificity untuk analisis komprehensif.</div>
+                <span class="step-tag">Acc {{ "%.1f"|format((performance.accuracy or 0.875) * 100) }}% · F1 {{ "%.1f"|format((performance.macro_f1 or 0.8743) * 100) }}%</span>
+            </div>
+            <div class="method-step reveal" data-step="06">
+                <div class="step-num">06</div>
+                <div class="step-title">Deployment Web</div>
+                <div class="step-desc">Model di-deploy sebagai web application menggunakan <strong>Flask</strong> dengan antarmuka yang intuitif, mendukung prediksi real-time berbasis teks judul berita.</div>
+                <span class="step-tag">Flask · IndoBERT · PyTorch</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ VISUALISASI -->
+<section id="visualisasi" class="section">
+    <div class="container">
+        <div class="section-head">
+            <div class="section-eyebrow">Analisis Dataset</div>
+            <h2 class="section-title">Distribusi & Visualisasi Data</h2>
+            <p class="section-desc">Eksplorasi mendalam terhadap distribusi dataset, pola kata, dan performa model secara visual.</p>
+        </div>
+
+        <div class="viz-grid">
+            <div class="viz-card reveal">
+                <div class="viz-card-head">
+                    <span class="viz-card-title"><i class="ph ph-chart-pie"></i>Distribusi Label</span>
+                    <span class="viz-badge">FAKE vs REAL</span>
+                </div>
+                <iframe class="viz-frame" src="{{ url_for('serve_viz', filename='label_distribution.html') }}" frameborder="0"></iframe>
+            </div>
+            <div class="viz-card reveal">
+                <div class="viz-card-head">
+                    <span class="viz-card-title"><i class="ph ph-buildings"></i>Distribusi Sumber</span>
+                    <span class="viz-badge">2 Sumber</span>
+                </div>
+                <iframe class="viz-frame" src="{{ url_for('serve_viz', filename='source_distribution.html') }}" frameborder="0"></iframe>
+            </div>
+            <div class="viz-card reveal">
+                <div class="viz-card-head">
+                    <span class="viz-card-title"><i class="ph ph-text-align-left"></i>Top Kata — FAKE</span>
+                    <span class="viz-badge" style="background:var(--red-pale);color:var(--red)">Hoax</span>
+                </div>
+                <iframe class="viz-frame" src="{{ url_for('serve_viz', filename='top_words_fake.html') }}" frameborder="0"></iframe>
+            </div>
+            <div class="viz-card reveal">
+                <div class="viz-card-head">
+                    <span class="viz-card-title"><i class="ph ph-text-align-left"></i>Top Kata — REAL</span>
+                    <span class="viz-badge" style="background:var(--green-pale);color:var(--green)">Valid</span>
+                </div>
+                <iframe class="viz-frame" src="{{ url_for('serve_viz', filename='top_words_real.html') }}" frameborder="0"></iframe>
+            </div>
+            <div class="viz-card span2 reveal">
+                <div class="viz-card-head">
+                    <span class="viz-card-title"><i class="ph ph-squares-four"></i>Confusion Matrix</span>
+                    <span class="viz-badge">Evaluasi Model</span>
+                </div>
+                <iframe class="viz-frame" src="{{ url_for('serve_viz', filename='confusion_matrix.html') }}" frameborder="0"></iframe>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ TENTANG -->
+<section id="tentang" class="section section-alt">
+    <div class="container">
+        <div class="section-head">
+            <div class="section-eyebrow">Tentang Sistem</div>
+            <h2 class="section-title">Teknologi yang Digunakan</h2>
+            <p class="section-desc">Stack teknologi modern untuk membangun sistem deteksi berita palsu yang akurat dan efisien.</p>
+        </div>
+
+        <div class="tech-grid">
+            <div class="tech-item reveal">
+                <div class="tech-icon"><i class="ph ph-brain"></i></div>
+                <div>
+                    <div class="tech-name">IndoBERT</div>
+                    <div class="tech-desc">Pre-trained BERT model untuk Bahasa Indonesia dari IndoNLU benchmark, digunakan sebagai backbone classifier.</div>
+                </div>
+            </div>
+            <div class="tech-item reveal">
+                <div class="tech-icon"><i class="ph ph-fire"></i></div>
+                <div>
+                    <div class="tech-name">PyTorch & HuggingFace</div>
+                    <div class="tech-desc">Framework deep learning dan Transformers library untuk fine-tuning dan inferensi model BERT.</div>
+                </div>
+            </div>
+            <div class="tech-item reveal">
+                <div class="tech-icon"><i class="ph ph-flask"></i></div>
+                <div>
+                    <div class="tech-name">Flask Python</div>
+                    <div class="tech-desc">Micro web framework Python untuk membangun REST API dan antarmuka web aplikasi deteksi berita.</div>
+                </div>
+            </div>
+            <div class="tech-item reveal">
+                <div class="tech-icon"><i class="ph ph-chart-line-up"></i></div>
+                <div>
+                    <div class="tech-name">Plotly Visualisasi</div>
+                    <div class="tech-desc">Library visualisasi interaktif untuk menampilkan distribusi data, confusion matrix, dan metrik performa.</div>
+                </div>
+            </div>
+            <div class="tech-item reveal">
+                <div class="tech-icon"><i class="ph ph-database"></i></div>
+                <div>
+                    <div class="tech-name">Scikit-learn</div>
+                    <div class="tech-desc">Digunakan untuk evaluasi model: classification report, confusion matrix, dan metrik pengukuran performa.</div>
+                </div>
+            </div>
+            <div class="tech-item reveal">
+                <div class="tech-icon"><i class="ph ph-newspaper"></i></div>
+                <div>
+                    <div class="tech-name">Dataset Berita Indonesia</div>
+                    <div class="tech-desc">{{ dataset_info.total or 248 }} data dari TurnBackHoax.id dan Antara News dengan label FAKE/REAL yang terverifikasi.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ FOOTER -->
+<footer class="footer" id="kontak">
+    <div class="container">
+        <div class="footer-grid">
+            <div>
+                <div class="footer-brand">
+                    <div class="footer-brand-dot"></div>
+                    FakeNewsDetector
+                </div>
+                <p class="footer-desc">
+                    Sistem deteksi berita palsu berbasis <strong style="color:white">BERT (Bidirectional Encoder Representations from Transformers)</strong>
+                    yang dilatih khusus untuk konten berita Bahasa Indonesia.
+                </p>
+            </div>
+            <div>
+                <div class="footer-heading">Navigasi</div>
+                <ul class="footer-list">
+                    <li><a href="#beranda">Beranda</a></li>
+                    <li><a href="#demo">Demo Prediksi</a></li>
+                    <li><a href="#metodologi">Metodologi</a></li>
+                    <li><a href="#visualisasi">Dataset & Visualisasi</a></li>
+                    <li><a href="#tentang">Tentang Sistem</a></li>
+                </ul>
+            </div>
+            <div>
+                <div class="footer-heading">Detail Model</div>
+                <ul class="footer-list">
+                    <li><span>Model: IndoBERT Fine-tuned</span></li>
+                    <li><span>Dataset: {{ dataset_info.total or 248 }} sampel</span></li>
+                    <li><span>Akurasi: {{ "%.2f"|format((performance.accuracy or 0.875) * 100) }}%</span></li>
+                    <li><span>Epoch: {{ model_info.epochs or 3 }} · LR: {{ model_info.learning_rate or '2e-5' }}</span></li>
+                    <li><span>Split: 80:20 (Train/Test)</span></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span class="footer-copy">&copy; {{ current_year or 2025 }} · Penelitian Deteksi Berita Palsu Menggunakan BERT</span>
+            <span class="footer-copy">Powered by IndoBERT · HuggingFace Transformers · Flask</span>
+        </div>
+    </div>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════ JS -->
+<script>
+    // Contoh teks
+    const SAMPLES = {
+        fake: [
+            "SALAH Video Warga Israel Mengungsi di Gurun Pasir",
+            "PENIPUAN Tautan Pendaftaran CPNS Kemenhub",
+            "HOAX: Video viral tsunami di Jakarta ternyata rekayasa!"
+        ],
+        real: [
+            "Bank Indonesia mempertahankan suku bunga acuan 5,75 persen",
+            "Airlangga dorong pengembangan investasi Temasek di Indonesia",
+            "Yogyakarta siapkan lokasi servis becak listrik untuk warga"
+        ]
+    };
+
+    // ── Hero mini predict ──────────────────────────────────
+    async function heroPredict() {
+        const text = document.getElementById('heroInput').value.trim();
+        if (!text) return;
+        const res = await callPredict(text);
+        if (!res) return;
+        const el = document.getElementById('heroResult');
+        const label = document.getElementById('heroLabel');
+        const conf  = document.getElementById('heroConf');
+        const fill  = document.getElementById('heroFill');
+
+        el.className = 'hcard-result ' + res.label.toLowerCase();
+        el.style.display = 'block';
+        label.className = 'result-label ' + res.label.toLowerCase();
+        label.innerHTML = (res.label === 'FAKE'
+            ? '<i class="ph ph-x-circle"></i> BERITA PALSU'
+            : '<i class="ph ph-check-circle"></i> BERITA VALID');
+        conf.textContent = 'Confidence: ' + (res.confidence * 100).toFixed(1) + '%';
+        fill.className = 'conf-fill ' + res.label.toLowerCase();
+        setTimeout(() => { fill.style.width = (res.confidence * 100) + '%'; }, 50);
+    }
+
+    // ── Demo full predict ──────────────────────────────────
+    async function demoPredict() {
+        const text = document.getElementById('demoInput').value.trim();
+        if (!text) { alert('Masukkan judul berita terlebih dahulu.'); return; }
+
+        document.getElementById('demoLoading').style.display = 'block';
+        document.getElementById('demoResult').style.display = 'none';
+
+        const res = await callPredict(text);
+        document.getElementById('demoLoading').style.display = 'none';
+        if (!res) return;
+
+        const pct  = (res.confidence * 100).toFixed(1);
+        const fake = res.label === 'FAKE';
+        const cls  = fake ? 'fake' : 'real';
+
+        const result = document.getElementById('demoResult');
+        result.className = 'demo-result ' + cls;
+        result.style.display = 'block';
+
+        document.getElementById('drVerdict').className = 'dr-verdict ' + cls;
+        document.getElementById('drVerdict').innerHTML = fake
+            ? '<i class="ph ph-x-circle verdict-icon"></i> BERITA PALSU (FAKE)'
+            : '<i class="ph ph-check-circle verdict-icon"></i> BERITA VALID (REAL)';
+
+        document.getElementById('drConfBox').className = 'dr-conf-box ' + cls;
+        document.getElementById('drConfBox').textContent = pct + '% Yakin';
+
+        document.getElementById('drConfPct').textContent = pct + '%';
+        const fill = document.getElementById('drFill');
+        fill.className = 'dr-fill ' + cls;
+        fill.style.width = '0%';
+        setTimeout(() => { fill.style.width = pct + '%'; }, 100);
+
+        document.getElementById('drDesc').textContent = fake
+            ? 'Model mendeteksi indikasi kuat bahwa berita ini berpotensi tidak valid. Harap verifikasi ke sumber berita terpercaya sebelum membagikan.'
+            : 'Model mendeteksi bahwa berita ini kemungkinan besar valid dan berasal dari sumber yang dapat dipercaya.';
+    }
+
+    // ── API call ke Flask ──────────────────────────────────
+    async function callPredict(text) {
+        try {
+            const r = await fetch('/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            if (!r.ok) throw new Error('Server error');
+            return await r.json();
+        } catch (e) {
+            console.error(e);
+            alert('Gagal menghubungi server. Pastikan Flask berjalan.');
+            return null;
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────
+    function fillSample(type) {
+        const arr = SAMPLES[type];
+        const text = arr[Math.floor(Math.random() * arr.length)];
+        document.getElementById('demoInput').value = text;
+        document.getElementById('demoResult').style.display = 'none';
+    }
+
+    function clearDemo() {
+        document.getElementById('demoInput').value = '';
+        document.getElementById('demoResult').style.display = 'none';
+    }
+
+    // Enter key di hero
+    document.getElementById('heroInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); heroPredict(); }
+    });
+
+    // ── Navbar scroll ─────────────────────────────────────
+    window.addEventListener('scroll', () => {
+        document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+    });
+
+    // ── Mobile menu ───────────────────────────────────────
+    document.getElementById('navToggle').addEventListener('click', () => {
+        document.getElementById('navMobile').classList.toggle('open');
+    });
+    function closeMenu() { document.getElementById('navMobile').classList.remove('open'); }
+
+    // ── Scroll reveal ─────────────────────────────────────
+    const revealObs = new IntersectionObserver(entries => {
+        entries.forEach((e, i) => {
+            if (e.isIntersecting) {
+                e.target.style.transitionDelay = (i * 0.08) + 's';
+                e.target.classList.add('visible');
+                revealObs.unobserve(e.target);
+            }
+        });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+</script>
+
+</body>
+</html>

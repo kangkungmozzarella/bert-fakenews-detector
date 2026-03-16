@@ -1,0 +1,921 @@
+{% extends "layouts/main_layout.html" %}
+
+{% block title %}Dashboard — FakeNews Detector{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Ringkasan performa model & dataset penelitian{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ─── Stat Cards ─────────────────────────────────────── */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 20px;
+        display: flex; align-items: flex-start; gap: 14px;
+        transition: border-color .2s, box-shadow .2s, transform .2s;
+        position: relative; overflow: hidden;
+    }
+    .stat-card::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .stat-card.blue::before  { background: var(--blue); }
+    .stat-card.violet::before{ background: var(--violet); }
+    .stat-card.green::before { background: var(--green); }
+    .stat-card.amber::before { background: var(--amber); }
+    .stat-card:hover {
+        border-color: rgba(59,91,219,.2);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+    .stat-icon {
+        width: 44px; height: 44px; border-radius: var(--r-md);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; flex-shrink: 0;
+    }
+    .stat-icon.blue   { background: var(--blue-pale);   color: var(--blue); }
+    .stat-icon.violet { background: var(--violet-pale, #f3f0ff); color: var(--violet); }
+    .stat-icon.green  { background: var(--green-pale);  color: var(--green); }
+    .stat-icon.amber  { background: var(--amber-pale);  color: var(--amber); }
+    .stat-body { flex: 1; min-width: 0; }
+    .stat-num {
+        font-size: 1.55rem; font-weight: 800;
+        color: var(--ink); line-height: 1; margin-bottom: 3px;
+    }
+    .stat-label { font-size: .78rem; color: var(--ink-mute); font-weight: 500; }
+    .stat-sub {
+        font-size: .72rem; color: var(--ink-mute);
+        margin-top: 6px; display: flex; align-items: center; gap: 4px;
+    }
+    .stat-sub .up   { color: var(--green); }
+    .stat-sub .down { color: var(--red); }
+
+    /* ─── Section header ─────────────────────────────────── */
+    .section-hd {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 16px;
+    }
+    .section-hd-title {
+        font-size: .95rem; font-weight: 700; color: var(--ink);
+        display: flex; align-items: center; gap: 8px;
+    }
+    .section-hd-title i { color: var(--blue); font-size: 1.05rem; }
+
+    /* ─── Card base ──────────────────────────────────────── */
+    .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        overflow: hidden;
+    }
+    .card-hd {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-hd-title {
+        font-size: .9rem; font-weight: 700; color: var(--ink);
+        display: flex; align-items: center; gap: 8px;
+    }
+    .card-hd-title i { color: var(--blue); }
+    .card-body { padding: 20px; }
+
+    /* ─── Two column layout ──────────────────────────────── */
+    .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    .three-col {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    /* ─── Badge / pill ───────────────────────────────────── */
+    .pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 10px; border-radius: 100px;
+        font-size: .72rem; font-weight: 600;
+    }
+    .pill.blue   { background: var(--blue-pale);  color: var(--blue); }
+    .pill.green  { background: var(--green-pale); color: var(--green); }
+    .pill.amber  { background: var(--amber-pale); color: var(--amber); }
+    .pill.red    { background: var(--red-pale);   color: var(--red); }
+    .pill.violet { background: #f3f0ff;           color: var(--violet); }
+    .pill.mute   { background: var(--surface-2);  color: var(--ink-mute); border: 1px solid var(--border); }
+
+    /* ─── Metric table ───────────────────────────────────── */
+    .metric-table { width: 100%; border-collapse: collapse; }
+    .metric-table th {
+        text-align: left; padding: 8px 12px;
+        font-size: .72rem; font-weight: 700; letter-spacing: .05em;
+        text-transform: uppercase; color: var(--ink-mute);
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+    }
+    .metric-table td {
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--border);
+        font-size: .85rem; color: var(--ink-soft);
+        vertical-align: middle;
+    }
+    .metric-table tr:last-child td { border-bottom: none; }
+    .metric-table tr:hover td { background: var(--surface-2); }
+    .metric-name { font-weight: 600; color: var(--ink); }
+
+    /* ─── Progress bar ───────────────────────────────────── */
+    .prog-row { margin-bottom: 14px; }
+    .prog-row:last-child { margin-bottom: 0; }
+    .prog-header {
+        display: flex; justify-content: space-between;
+        margin-bottom: 5px;
+    }
+    .prog-label { font-size: .82rem; font-weight: 600; color: var(--ink-soft); }
+    .prog-val   { font-size: .78rem; font-weight: 700; color: var(--ink); }
+    .prog-track {
+        height: 6px; border-radius: 3px;
+        background: var(--surface-3); overflow: hidden;
+    }
+    .prog-fill {
+        height: 100%; border-radius: 3px;
+        transition: width 1s cubic-bezier(.22,1,.36,1);
+    }
+    .prog-fill.blue   { background: var(--blue); }
+    .prog-fill.violet { background: var(--violet); }
+    .prog-fill.green  { background: var(--green); }
+    .prog-fill.red    { background: var(--red); }
+    .prog-fill.amber  { background: var(--amber); }
+
+    /* ─── Info list ──────────────────────────────────────── */
+    .info-list { display: flex; flex-direction: column; gap: 10px; }
+    .info-row {
+        display: flex; align-items: center;
+        justify-content: space-between;
+        font-size: .85rem;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border);
+    }
+    .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .info-key { color: var(--ink-mute); font-weight: 500; }
+    .info-val { color: var(--ink); font-weight: 600; text-align: right; }
+
+    /* ─── Sample results table ───────────────────────────── */
+    .results-table { width: 100%; border-collapse: collapse; }
+    .results-table th {
+        text-align: left; padding: 8px 12px;
+        font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+        text-transform: uppercase; color: var(--ink-mute);
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+        white-space: nowrap;
+    }
+    .results-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        font-size: .82rem; color: var(--ink-soft);
+    }
+    .results-table tr:last-child td { border-bottom: none; }
+    .results-table tr:hover td { background: var(--surface-2); }
+    .text-truncate {
+        max-width: 220px; overflow: hidden;
+        text-overflow: ellipsis; white-space: nowrap;
+        display: block;
+    }
+
+    /* ─── Welcome banner ─────────────────────────────────── */
+    .welcome-banner {
+        background: #0f1117;
+        border-radius: 16px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+        display: flex; align-items: center;
+        justify-content: space-between; gap: 16px;
+        position: relative; overflow: hidden;
+        border: 1px solid rgba(255,255,255,.06);
+    }
+    .welcome-banner::before {
+        content: '';
+        position: absolute; inset: 0;
+        background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px);
+        background-size: 20px 20px;
+        pointer-events: none;
+    }
+    .welcome-banner::after {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        background: linear-gradient(90deg, var(--blue), var(--violet));
+    }
+    .welcome-left { position: relative; z-index: 1; }
+    .welcome-greeting {
+        font-size: .8rem; font-weight: 600;
+        color: rgba(255,255,255,.45) !important; margin-bottom: 4px;
+        text-transform: uppercase; letter-spacing: .06em;
+    }
+    .welcome-title {
+        font-size: 1.1rem; font-weight: 800; color: #ffffff !important;
+        margin-bottom: 4px; letter-spacing: -.01em;
+    }
+    .welcome-sub {
+        font-size: .8rem; color: rgba(255,255,255,.4) !important; font-weight: 400;
+    }
+    .welcome-right {
+        position: relative; z-index: 1;
+        display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+    .welcome-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 12px; border-radius: 100px;
+        background: rgba(255,255,255,.07);
+        border: 1px solid rgba(255,255,255,.1);
+        font-size: .75rem; font-weight: 600; color: rgba(255,255,255,.7);
+    }
+    .welcome-chip-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 0 2px rgba(47,158,68,.3);
+        animation: pulse-dot 2s ease infinite;
+    }
+    @keyframes pulse-dot {
+        0%,100% { opacity: 1; }
+        50%      { opacity: .4; }
+    }
+
+    /* ─── Highlight metric box ───────────────────────────── */
+    .highlight-box {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--r-md);
+        padding: 14px 16px; text-align: center;
+        transition: border-color .2s;
+    }
+    .highlight-box:hover { border-color: rgba(59,91,219,.25); }
+    .highlight-num {
+        font-size: 1.4rem; font-weight: 800;
+        color: var(--ink); line-height: 1;
+    }
+    .highlight-label {
+        font-size: .72rem; color: var(--ink-mute);
+        margin-top: 4px; font-weight: 500;
+    }
+
+    /* ─── Model status card ──────────────────────────────── */
+    .model-status {
+        display: flex; align-items: center; gap: 12px;
+        padding: 14px 16px;
+        background: var(--green-pale);
+        border: 1px solid rgba(47,158,68,.2);
+        border-radius: var(--r-md);
+        margin-bottom: 14px;
+    }
+    .model-status.inactive {
+        background: var(--amber-pale);
+        border-color: rgba(230,119,0,.2);
+    }
+    .model-status-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: var(--green); flex-shrink: 0;
+        box-shadow: 0 0 0 3px rgba(47,158,68,.2);
+        animation: pulse-dot 2s ease infinite;
+    }
+    .model-status.inactive .model-status-dot {
+        background: var(--amber);
+        box-shadow: 0 0 0 3px rgba(230,119,0,.2);
+    }
+    .model-status-text { font-size: .85rem; font-weight: 600; color: var(--ink-soft); }
+    .model-status-sub  { font-size: .75rem; color: var(--ink-mute); margin-top: 1px; }
+
+    /* ─── Scrollable table wrapper ───────────────────────── */
+    .table-wrap { overflow-x: auto; }
+
+    /* ─── Responsive ─────────────────────────────────────── */
+    @media (max-width: 1100px) {
+        .stat-grid { grid-template-columns: repeat(2, 1fr); }
+        .three-col { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+        .stat-grid { grid-template-columns: repeat(2, 1fr); }
+        .two-col   { grid-template-columns: 1fr; }
+        .welcome-right { display: none; }
+    }
+    @media (max-width: 480px) {
+        .stat-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Welcome Banner ─────────────────────────────────────── -->
+<div class="welcome-banner">
+    <div class="welcome-left">
+        <div class="welcome-greeting">Selamat datang kembali</div>
+        <div class="welcome-title">{{ current_user or 'Admin' }} — FakeNews Detector</div>
+        <div class="welcome-sub">
+            {{ app_settings.description or 'Sistem Deteksi Berita Palsu Berbasis IndoBERT' }}
+            &nbsp;·&nbsp; Update: {{ last_update or '-' }}
+        </div>
+    </div>
+    <div class="welcome-right">
+        <div class="welcome-chip">
+            <div class="welcome-chip-dot"></div>
+            {% if model_loaded %}Model Active{% else %}Model Ready{% endif %}
+        </div>
+        <div class="welcome-chip">
+            <i class="ph ph-brain" style="color:var(--blue-light);"></i>
+            {{ model_info.model_name or 'IndoBERT' }}
+        </div>
+    </div>
+</div>
+
+<!-- ── Stat Cards ─────────────────────────────────────────── -->
+<div class="stat-grid">
+    <div class="stat-card blue">
+        <div class="stat-icon blue"><i class="ph ph-chart-bar"></i></div>
+        <div class="stat-body">
+            <div class="stat-num">
+                {% if performance.accuracy %}
+                    {{ "%.2f"|format(performance.accuracy * 100) }}%
+                {% else %}—{% endif %}
+            </div>
+            <div class="stat-label">Accuracy</div>
+            <div class="stat-sub">
+                <span>Macro F1:</span>
+                <strong>
+                    {% if performance.macro_f1 %}
+                        {{ "%.2f"|format(performance.macro_f1 * 100) }}%
+                    {% else %}—{% endif %}
+                </strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card violet">
+        <div class="stat-icon violet"><i class="ph ph-intersect"></i></div>
+        <div class="stat-body">
+            <div class="stat-num">
+                {% if performance.fake_f1 %}
+                    {{ "%.2f"|format(performance.fake_f1 * 100) }}%
+                {% else %}—{% endif %}
+            </div>
+            <div class="stat-label">F1-Score FAKE</div>
+            <div class="stat-sub">
+                <span>Precision:</span>
+                <strong>
+                    {% if performance.fake_precision %}
+                        {{ "%.2f"|format(performance.fake_precision * 100) }}%
+                    {% else %}—{% endif %}
+                </strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card green">
+        <div class="stat-icon green"><i class="ph ph-database"></i></div>
+        <div class="stat-body">
+            <div class="stat-num">{{ dataset_info.total or '—' }}</div>
+            <div class="stat-label">Total Dataset</div>
+            <div class="stat-sub">
+                <span>Train {{ dataset_info.train or '—' }}</span>
+                &nbsp;·&nbsp;
+                <span>Test {{ dataset_info.test or '—' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card amber">
+        <div class="stat-icon amber"><i class="ph ph-sliders"></i></div>
+        <div class="stat-body">
+            <div class="stat-num">{{ model_info.epochs or '—' }} Epoch</div>
+            <div class="stat-label">Fine-tuning</div>
+            <div class="stat-sub">
+                <span>LR: {{ model_info.learning_rate or '—' }}</span>
+                &nbsp;·&nbsp;
+                <span>Batch: {{ model_info.batch_size or '—' }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 2: Metrik Evaluasi + Info Model ────────────────── -->
+<div class="three-col">
+
+    <!-- Tabel metrik lengkap -->
+    <div class="card">
+        <div class="card-hd">
+            <span class="card-hd-title">
+                <i class="ph ph-chart-line-up"></i> Metrik Evaluasi Model
+            </span>
+            <span class="pill blue">IndoBERT Fine-tuned</span>
+        </div>
+        <div class="table-wrap">
+            <table class="metric-table">
+                <thead>
+                    <tr>
+                        <th>Metrik</th>
+                        <th>FAKE</th>
+                        <th>REAL</th>
+                        <th>Macro Avg</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="metric-name">Precision</span></td>
+                        <td>
+                            {% if performance.fake_precision %}
+                                {{ "%.4f"|format(performance.fake_precision) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if performance.real_precision %}
+                                {{ "%.4f"|format(performance.real_precision) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if performance.fake_precision and performance.real_precision %}
+                                {{ "%.4f"|format((performance.fake_precision + performance.real_precision) / 2) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td><span class="pill green">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="metric-name">Recall</span></td>
+                        <td>
+                            {% if performance.fake_recall %}
+                                {{ "%.4f"|format(performance.fake_recall) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if performance.real_recall %}
+                                {{ "%.4f"|format(performance.real_recall) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if performance.fake_recall and performance.real_recall %}
+                                {{ "%.4f"|format((performance.fake_recall + performance.real_recall) / 2) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td><span class="pill green">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="metric-name">F1-Score</span></td>
+                        <td>
+                            {% if performance.fake_f1 %}
+                                {{ "%.4f"|format(performance.fake_f1) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if performance.real_f1 %}
+                                {{ "%.4f"|format(performance.real_f1) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if performance.macro_f1 %}
+                                {{ "%.4f"|format(performance.macro_f1) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td><span class="pill green">Good</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="metric-name">Accuracy</span></td>
+                        <td colspan="3" style="text-align:center;font-weight:700;color:var(--ink);">
+                            {% if performance.accuracy %}
+                                {{ "%.4f"|format(performance.accuracy) }}
+                                ({{ "%.2f"|format(performance.accuracy * 100) }}%)
+                            {% else %}—{% endif %}
+                        </td>
+                        <td><span class="pill blue">Overall</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="metric-name">Sensitivity</span></td>
+                        <td colspan="3" style="text-align:center;">
+                            {% if performance.sensitivity %}
+                                {{ "%.4f"|format(performance.sensitivity) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td><span class="pill mute">Info</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="metric-name">Specificity</span></td>
+                        <td colspan="3" style="text-align:center;">
+                            {% if performance.specificity %}
+                                {{ "%.4f"|format(performance.specificity) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td><span class="pill mute">Info</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Info Model + Dataset -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Model Status -->
+        <div class="card">
+            <div class="card-hd">
+                <span class="card-hd-title"><i class="ph ph-cpu"></i> Status Model</span>
+            </div>
+            <div class="card-body">
+                <div class="model-status {% if not model_loaded %}inactive{% endif %}">
+                    <div class="model-status-dot"></div>
+                    <div>
+                        <div class="model-status-text">
+                            {% if model_loaded %}Model Aktif & Siap{% else %}Model Standby{% endif %}
+                        </div>
+                        <div class="model-status-sub">
+                            {{ model_info.model_name or 'indobenchmark/indobert-base-p1' }}
+                        </div>
+                    </div>
+                </div>
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-key">Max Length</span>
+                        <span class="info-val">{{ model_info.max_length or '—' }} token</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-key">Num Labels</span>
+                        <span class="info-val">{{ model_info.num_labels or 2 }} kelas</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-key">Label Map</span>
+                        <span class="info-val">
+                            <span class="pill red" style="font-size:.68rem;">0 = FAKE</span>
+                            <span class="pill green" style="font-size:.68rem;">1 = REAL</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dataset Info -->
+        <div class="card">
+            <div class="card-hd">
+                <span class="card-hd-title"><i class="ph ph-database"></i> Informasi Dataset</span>
+            </div>
+            <div class="card-body">
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-key">Total Data</span>
+                        <span class="info-val">{{ dataset_info.total or '—' }} sampel</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-key">Data Latih</span>
+                        <span class="info-val">{{ dataset_info.train or '—' }} (80%)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-key">Data Uji</span>
+                        <span class="info-val">{{ dataset_info.test or '—' }} (20%)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-key">Balancing</span>
+                        <span class="info-val">{{ dataset_info.balance or '50-50' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-key">Sumber</span>
+                        <span class="info-val" style="font-size:.75rem;text-align:right;">TurnBackHoax.id · Antara News</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── Row 3: Progress Bar Metrik + Config Training ───────── -->
+<div class="two-col" style="margin-bottom:20px;">
+
+    <!-- Per-class metrics visual -->
+    <div class="card">
+        <div class="card-hd">
+            <span class="card-hd-title"><i class="ph ph-sliders-horizontal"></i> Performa Per Kelas</span>
+            <span class="pill mute">FAKE vs REAL</span>
+        </div>
+        <div class="card-body">
+            <!-- FAKE -->
+            <div style="margin-bottom:18px;">
+                <div style="font-size:.8rem;font-weight:700;color:var(--red);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+                    <span class="pill red">FAKE</span> Berita Palsu
+                </div>
+                <div class="prog-row">
+                    <div class="prog-header">
+                        <span class="prog-label">Precision</span>
+                        <span class="prog-val">
+                            {% if performance.fake_precision %}{{ "%.1f"|format(performance.fake_precision * 100) }}%{% else %}—{% endif %}
+                        </span>
+                    </div>
+                    <div class="prog-track">
+                        <div class="prog-fill red" style="width:{{ (performance.fake_precision or 0) * 100 }}%"></div>
+                    </div>
+                </div>
+                <div class="prog-row">
+                    <div class="prog-header">
+                        <span class="prog-label">Recall</span>
+                        <span class="prog-val">
+                            {% if performance.fake_recall %}{{ "%.1f"|format(performance.fake_recall * 100) }}%{% else %}—{% endif %}
+                        </span>
+                    </div>
+                    <div class="prog-track">
+                        <div class="prog-fill red" style="width:{{ (performance.fake_recall or 0) * 100 }}%"></div>
+                    </div>
+                </div>
+                <div class="prog-row">
+                    <div class="prog-header">
+                        <span class="prog-label">F1-Score</span>
+                        <span class="prog-val">
+                            {% if performance.fake_f1 %}{{ "%.1f"|format(performance.fake_f1 * 100) }}%{% else %}—{% endif %}
+                        </span>
+                    </div>
+                    <div class="prog-track">
+                        <div class="prog-fill red" style="width:{{ (performance.fake_f1 or 0) * 100 }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+            <!-- REAL -->
+            <div>
+                <div style="font-size:.8rem;font-weight:700;color:var(--green);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+                    <span class="pill green">REAL</span> Berita Valid
+                </div>
+                <div class="prog-row">
+                    <div class="prog-header">
+                        <span class="prog-label">Precision</span>
+                        <span class="prog-val">
+                            {% if performance.real_precision %}{{ "%.1f"|format(performance.real_precision * 100) }}%{% else %}—{% endif %}
+                        </span>
+                    </div>
+                    <div class="prog-track">
+                        <div class="prog-fill green" style="width:{{ (performance.real_precision or 0) * 100 }}%"></div>
+                    </div>
+                </div>
+                <div class="prog-row">
+                    <div class="prog-header">
+                        <span class="prog-label">Recall</span>
+                        <span class="prog-val">
+                            {% if performance.real_recall %}{{ "%.1f"|format(performance.real_recall * 100) }}%{% else %}—{% endif %}
+                        </span>
+                    </div>
+                    <div class="prog-track">
+                        <div class="prog-fill green" style="width:{{ (performance.real_recall or 0) * 100 }}%"></div>
+                    </div>
+                </div>
+                <div class="prog-row">
+                    <div class="prog-header">
+                        <span class="prog-label">F1-Score</span>
+                        <span class="prog-val">
+                            {% if performance.real_f1 %}{{ "%.1f"|format(performance.real_f1 * 100) }}%{% else %}—{% endif %}
+                        </span>
+                    </div>
+                    <div class="prog-track">
+                        <div class="prog-fill green" style="width:{{ (performance.real_f1 or 0) * 100 }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Training Config + Highlight -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Highlight boxes -->
+        <div class="card">
+            <div class="card-hd">
+                <span class="card-hd-title"><i class="ph ph-trophy"></i> Ringkasan Performa</span>
+            </div>
+            <div class="card-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+                    <div class="highlight-box">
+                        <div class="highlight-num" style="color:var(--blue);">
+                            {% if performance.accuracy %}{{ "%.2f"|format(performance.accuracy * 100) }}%{% else %}—{% endif %}
+                        </div>
+                        <div class="highlight-label">Accuracy</div>
+                    </div>
+                    <div class="highlight-box">
+                        <div class="highlight-num" style="color:var(--violet);">
+                            {% if performance.macro_f1 %}{{ "%.2f"|format(performance.macro_f1 * 100) }}%{% else %}—{% endif %}
+                        </div>
+                        <div class="highlight-label">Macro F1</div>
+                    </div>
+                    <div class="highlight-box">
+                        <div class="highlight-num" style="color:var(--green);">
+                            {% if performance.sensitivity %}{{ "%.2f"|format(performance.sensitivity * 100) }}%{% else %}—{% endif %}
+                        </div>
+                        <div class="highlight-label">Sensitivity</div>
+                    </div>
+                    <div class="highlight-box">
+                        <div class="highlight-num" style="color:var(--amber);">
+                            {% if performance.specificity %}{{ "%.2f"|format(performance.specificity * 100) }}%{% else %}—{% endif %}
+                        </div>
+                        <div class="highlight-label">Specificity</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Config -->
+        <div class="card">
+            <div class="card-hd">
+                <span class="card-hd-title"><i class="ph ph-gear"></i> Konfigurasi Training</span>
+            </div>
+            <div class="card-body">
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-key">Epochs</span>
+                        <span class="info-val">{{ model_info.epochs or '—' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-key">Learning Rate</span>
+                        <span class="info-val">{{ model_info.learning_rate or '—' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-key">Batch Size</span>
+                        <span class="info-val">{{ model_info.batch_size or '—' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-key">Max Length</span>
+                        <span class="info-val">{{ model_info.max_length or '—' }} token</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 4: Sample Test Results ────────────────────────── -->
+{% if sample_results %}
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-hd">
+        <span class="card-hd-title">
+            <i class="ph ph-test-tube"></i> Hasil Uji Prediksi (Test Cases)
+        </span>
+        <span class="pill mute">{{ sample_results|length }} sampel</span>
+    </div>
+    <div class="table-wrap">
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Teks Berita</th>
+                    <th>Label Asli</th>
+                    <th>Prediksi</th>
+                    <th>Confidence</th>
+                    <th>Hasil</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in sample_results %}
+                <tr>
+                    <td style="color:var(--ink-mute);font-size:.75rem;">{{ loop.index }}</td>
+                    <td>
+                        <span class="text-truncate" title="{{ r.Text or '' }}">
+                            {{ r.Text or '—' }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="pill {{ 'red' if r.Expected == 'FAKE' else 'green' }}">
+                            {{ r.Expected or '—' }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="pill {{ 'red' if r.Predicted == 'FAKE' else 'green' }}">
+                            {{ r.Predicted or '—' }}
+                        </span>
+                    </td>
+                    <td style="font-weight:600;color:var(--ink);">
+                        {% if r.Confidence %}{{ "%.2f"|format(r.Confidence * 100) if r.Confidence <= 1 else "%.2f"|format(r.Confidence) }}%{% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if r.Correct %}
+                            <span class="pill green"><i class="ph ph-check"></i> Benar</span>
+                        {% else %}
+                            <span class="pill red"><i class="ph ph-x"></i> Salah</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- ── Row 5: Visualisasi ─────────────────────────────────── -->
+{% if viz %}
+<div class="section-hd">
+    <span class="section-hd-title">
+        <i class="ph ph-chart-pie"></i> Visualisasi Dataset & Evaluasi
+    </span>
+    <span class="pill mute">{{ viz|length }} chart</span>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+
+    {% if viz.confusion_matrix %}
+    <div class="card" style="grid-column:span 2;">
+        <div class="card-hd">
+            <span class="card-hd-title"><i class="ph ph-squares-four"></i> Confusion Matrix</span>
+            <span class="pill blue">Evaluasi Model</span>
+        </div>
+        <iframe src="{{ url_for('serve_viz', filename=viz.confusion_matrix) }}"
+                style="width:100%;height:360px;border:none;display:block;"></iframe>
+    </div>
+    {% endif %}
+
+    {% if viz.metrics_per_class %}
+    <div class="card" style="grid-column:span 2;">
+        <div class="card-hd">
+            <span class="card-hd-title"><i class="ph ph-chart-bar"></i> Metrik Per Kelas</span>
+            <span class="pill violet">Precision · Recall · F1</span>
+        </div>
+        <iframe src="{{ url_for('serve_viz', filename=viz.metrics_per_class) }}"
+                style="width:100%;height:340px;border:none;display:block;"></iframe>
+    </div>
+    {% endif %}
+
+    {% if viz.label_distribution %}
+    <div class="card">
+        <div class="card-hd">
+            <span class="card-hd-title"><i class="ph ph-chart-pie"></i> Distribusi Label</span>
+            <span class="pill mute">FAKE vs REAL</span>
+        </div>
+        <iframe src="{{ url_for('serve_viz', filename=viz.label_distribution) }}"
+                style="width:100%;height:300px;border:none;display:block;"></iframe>
+    </div>
+    {% endif %}
+
+    {% if viz.source_distribution %}
+    <div class="card">
+        <div class="card-hd">
+            <span class="card-hd-title"><i class="ph ph-buildings"></i> Distribusi Sumber</span>
+            <span class="pill mute">2 Sumber</span>
+        </div>
+        <iframe src="{{ url_for('serve_viz', filename=viz.source_distribution) }}"
+                style="width:100%;height:300px;border:none;display:block;"></iframe>
+    </div>
+    {% endif %}
+
+    {% if viz.top_words_fake %}
+    <div class="card">
+        <div class="card-hd">
+            <span class="card-hd-title"><i class="ph ph-text-align-left"></i> Top Kata — FAKE</span>
+            <span class="pill red">Hoax</span>
+        </div>
+        <iframe src="{{ url_for('serve_viz', filename=viz.top_words_fake) }}"
+                style="width:100%;height:300px;border:none;display:block;"></iframe>
+    </div>
+    {% endif %}
+
+    {% if viz.top_words_real %}
+    <div class="card">
+        <div class="card-hd">
+            <span class="card-hd-title"><i class="ph ph-text-align-left"></i> Top Kata — REAL</span>
+            <span class="pill green">Valid</span>
+        </div>
+        <iframe src="{{ url_for('serve_viz', filename=viz.top_words_real) }}"
+                style="width:100%;height:300px;border:none;display:block;"></iframe>
+    </div>
+    {% endif %}
+
+    {% if viz.title_length_boxplot %}
+    <div class="card" style="grid-column:span 2;">
+        <div class="card-hd">
+            <span class="card-hd-title"><i class="ph ph-ruler"></i> Distribusi Panjang Judul</span>
+            <span class="pill mute">Boxplot</span>
+        </div>
+        <iframe src="{{ url_for('serve_viz', filename=viz.title_length_boxplot) }}"
+                style="width:100%;height:320px;border:none;display:block;"></iframe>
+    </div>
+    {% endif %}
+
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Animasikan progress bars setelah load
+    document.addEventListener('DOMContentLoaded', () => {
+        const fills = document.querySelectorAll('.prog-fill');
+        // Reset dulu ke 0, lalu animasikan
+        fills.forEach(f => {
+            const target = f.style.width;
+            f.style.width = '0%';
+            setTimeout(() => { f.style.width = target; }, 200);
+        });
+    });
+</script>
+{% endblock %}

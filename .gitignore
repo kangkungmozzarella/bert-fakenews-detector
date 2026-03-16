@@ -1,0 +1,5 @@
+flask_components/models/
+__pycache__/
+*.pyc
+venv/
+.env

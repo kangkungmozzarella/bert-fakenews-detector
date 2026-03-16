@@ -1,0 +1,641 @@
+{% extends "layouts/main_layout.html" %}
+
+{% block title %}Tentang Penelitian — FakeNews Detector{% endblock %}
+{% block page_title %}Tentang Penelitian{% endblock %}
+{% block page_subtitle %}Informasi lengkap sistem deteksi berita palsu berbasis BERT{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Banner ────────────────────────────────────────────── */
+    .ab {
+        background: #edf2ff;
+        border: 1px solid rgba(59,91,219,.2);
+        border-radius: 16px;
+        padding: 28px 32px;
+        margin-bottom: 20px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+    }
+    .ab-dots {
+        position: absolute; inset: 0; pointer-events: none; z-index: 0;
+        background-image: radial-gradient(rgba(59,91,219,.08) 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+    .ab-line {
+        position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        background: linear-gradient(90deg, #3b5bdb, #7048e8); z-index: 2;
+    }
+    .ab-left  { position: relative; z-index: 1; }
+    .ab-right { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
+
+    .ab-eye {
+        font-size: .7rem; font-weight: 700; letter-spacing: .1em;
+        text-transform: uppercase; color: #3b5bdb;
+        margin-bottom: 8px; display: block;
+    }
+    .ab-title {
+        font-size: 1.2rem; font-weight: 800;
+        color: #0f1117; line-height: 1.3;
+        margin-bottom: 6px; display: block;
+        letter-spacing: -.02em;
+    }
+    .ab-sub {
+        font-size: .82rem; font-weight: 400;
+        color: #3b3f52; display: block;
+    }
+    .ab-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 12px; border-radius: 100px;
+        background: #ffffff;
+        border: 1px solid rgba(59,91,219,.2);
+        font-size: .75rem; font-weight: 600;
+        color: #3b5bdb;
+    }
+
+    /* ── Layout ────────────────────────────────────────────── */
+    .two-col   { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+    .full-col  { margin-bottom: 16px; }
+
+    /* ── Card ──────────────────────────────────────────────── */
+    .tcard {
+        background: #ffffff;
+        border: 1px solid #e2e4f0;
+        border-radius: 16px;
+        overflow: hidden;
+        transition: border-color .2s, box-shadow .2s, transform .2s;
+    }
+    .tcard:hover {
+        border-color: rgba(59,91,219,.22);
+        box-shadow: 0 4px 16px rgba(15,17,23,.08);
+        transform: translateY(-2px);
+    }
+    .tcard-hd {
+        padding: 14px 20px;
+        border-bottom: 1px solid #e2e4f0;
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .tcard-hd-title {
+        font-size: .88rem; font-weight: 700; color: #0f1117;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .tcard-hd-title i { color: #3b5bdb; }
+    .tcard-body { padding: 20px; }
+
+    /* ── Info rows ─────────────────────────────────────────── */
+    .irow {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        gap: 12px; padding: 10px 0;
+        border-bottom: 1px solid #e2e4f0; font-size: .85rem;
+    }
+    .irow:first-child { padding-top: 0; }
+    .irow:last-child  { border-bottom: none; padding-bottom: 0; }
+    .ikey { color: #8b90a8; font-weight: 500; flex-shrink: 0; }
+    .ival { color: #0f1117; font-weight: 600; text-align: right; }
+
+    /* ── Stat boxes ────────────────────────────────────────── */
+    .sboxes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .sbox {
+        background: #f5f6fa; border: 1px solid #e2e4f0;
+        border-radius: 12px; padding: 14px; text-align: center;
+        transition: border-color .2s;
+    }
+    .sbox:hover { border-color: rgba(59,91,219,.25); }
+    .sbox-num { font-size: 1.35rem; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+    .sbox-lbl { font-size: .72rem; color: #8b90a8; font-weight: 500; }
+
+    /* ── Pill ──────────────────────────────────────────────── */
+    .pill {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 10px; border-radius: 100px;
+        font-size: .72rem; font-weight: 600;
+    }
+    .pill-b  { background: #edf2ff; color: #3b5bdb; }
+    .pill-v  { background: #f3f0ff; color: #7048e8; }
+    .pill-g  { background: #ebfbee; color: #2f9e44; }
+    .pill-r  { background: #fff5f5; color: #e03131; }
+    .pill-a  { background: #fff8eb; color: #e67700; }
+    .pill-m  { background: #f5f6fa; color: #8b90a8; border: 1px solid #e2e4f0; }
+
+    /* ── Objective list ────────────────────────────────────── */
+    .obj-list { display: flex; flex-direction: column; }
+    .obj-item {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 10px 0; border-bottom: 1px solid #e2e4f0;
+        font-size: .85rem; color: #3b3f52; line-height: 1.6;
+    }
+    .obj-item:first-child { padding-top: 0; }
+    .obj-item:last-child  { border-bottom: none; padding-bottom: 0; }
+    .obj-num {
+        width: 24px; height: 24px; border-radius: 50%;
+        background: #edf2ff; color: #3b5bdb;
+        font-size: .72rem; font-weight: 800; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .obj-icon {
+        width: 28px; height: 28px; border-radius: 50%;
+        font-size: .75rem; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Flow metodologi ───────────────────────────────────── */
+    .flow-grid {
+        display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; align-items: start;
+    }
+    .fstep { text-align: center; padding: 12px 6px; position: relative; }
+    .fstep:not(:last-child)::after {
+        content: '';
+        position: absolute; top: 36px; right: -6px;
+        width: 12px; height: 2px; background: #e2e4f0;
+    }
+    .ficon {
+        width: 48px; height: 48px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; margin: 0 auto 10px;
+        border: 1px solid rgba(59,91,219,.15);
+        background: #edf2ff; color: #3b5bdb;
+    }
+    .ficon.v { background: #f3f0ff; color: #7048e8; border-color: rgba(112,72,232,.15); }
+    .ficon.g { background: #ebfbee; color: #2f9e44; border-color: rgba(47,158,68,.15); }
+    .ficon.a { background: #fff8eb; color: #e67700; border-color: rgba(230,119,0,.15); }
+    .ftitle  { font-size: .78rem; font-weight: 700; color: #0f1117; margin-bottom: 3px; }
+    .fsub    { font-size: .68rem; color: #8b90a8; line-height: 1.4; }
+
+    /* ── Tech tags ─────────────────────────────────────────── */
+    .tech-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ttag {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 12px; border-radius: 8px;
+        background: #f5f6fa; border: 1px solid #e2e4f0;
+        font-size: .8rem; font-weight: 600; color: #3b3f52;
+        transition: border-color .2s, background .2s, color .2s;
+    }
+    .ttag:hover { border-color: rgba(59,91,219,.3); background: #edf2ff; color: #3b5bdb; }
+
+    /* ── Conclusion ────────────────────────────────────────── */
+    .conclusion {
+        background: #edf2ff; border: 1px solid rgba(59,91,219,.2);
+        border-radius: 12px; padding: 20px;
+        font-size: .9rem; color: #3b3f52; line-height: 1.75;
+    }
+    .conclusion strong { color: #3b5bdb; }
+
+    /* ── Responsive ────────────────────────────────────────── */
+    @media (max-width: 1024px) {
+        .three-col { grid-template-columns: 1fr 1fr; }
+        .flow-grid { grid-template-columns: repeat(3, 1fr); }
+        .fstep:not(:last-child)::after { display: none; }
+    }
+    @media (max-width: 768px) {
+        .two-col   { grid-template-columns: 1fr; }
+        .three-col { grid-template-columns: 1fr; }
+        .flow-grid { grid-template-columns: repeat(2, 1fr); }
+        .sboxes    { grid-template-columns: repeat(3, 1fr); }
+        .ab { flex-direction: column; gap: 16px; }
+        .ab-right { justify-content: flex-start; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Banner ───────────────────────────────────────────────── -->
+<div class="ab">
+    <div class="ab-dots"></div>
+    <div class="ab-line"></div>
+    <div class="ab-left">
+        <span class="ab-eye">Tentang Penelitian</span>
+        <span class="ab-title">
+            Pengembangan Model Deteksi Berita Palsu<br>
+            Menggunakan Metode BERT
+        </span>
+        <span class="ab-sub">
+            Bidirectional Encoder Representations from Transformers · Bahasa Indonesia · {{ current_year }}
+        </span>
+    </div>
+    <div class="ab-right">
+        <span class="ab-chip"><i class="ph ph-brain" style="color:#74c0fc;"></i> IndoBERT</span>
+        <span class="ab-chip"><i class="ph ph-fire" style="color:#fb923c;"></i> PyTorch</span>
+        <span class="ab-chip"><i class="ph ph-flask" style="color:#a78bfa;"></i> Flask</span>
+    </div>
+</div>
+
+<!-- ── Row 1: Info Penelitian + Performa ────────────────────── -->
+<div class="two-col">
+
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-info"></i> Informasi Penelitian</span>
+        </div>
+        <div class="tcard-body">
+            <div class="irow">
+                <span class="ikey">Judul</span>
+                <span class="ival" style="font-size:.78rem;max-width:280px;">
+                    Pengembangan Model Deteksi Berita Palsu pada Platform Berita Online Menggunakan Metode BERT
+                </span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Metode</span>
+                <span class="ival">IndoBERT Fine-tuning</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Model Base</span>
+                <span class="ival" style="font-size:.78rem;">{{ model_info.model_name or 'indobenchmark/indobert-base-p1' }}</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Domain</span>
+                <span class="ival">Berita Online Bahasa Indonesia</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Jenis Tugas</span>
+                <span class="ival">Binary Text Classification</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Kelas Label</span>
+                <span class="ival">
+                    <span class="pill pill-r">FAKE</span>&nbsp;
+                    <span class="pill pill-g">REAL</span>
+                </span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Tahun</span>
+                <span class="ival">{{ current_year }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-trophy"></i> Performa Model</span>
+            <span class="pill pill-g">Hasil Evaluasi</span>
+        </div>
+        <div class="tcard-body">
+            <div class="sboxes">
+                <div class="sbox">
+                    <div class="sbox-num" style="color:#3b5bdb;">
+                        {% if performance.accuracy %}{{ "%.2f"|format(performance.accuracy * 100) }}%{% else %}—{% endif %}
+                    </div>
+                    <div class="sbox-lbl">Accuracy</div>
+                </div>
+                <div class="sbox">
+                    <div class="sbox-num" style="color:#7048e8;">
+                        {% if performance.macro_f1 %}{{ "%.2f"|format(performance.macro_f1 * 100) }}%{% else %}—{% endif %}
+                    </div>
+                    <div class="sbox-lbl">Macro F1</div>
+                </div>
+                <div class="sbox">
+                    <div class="sbox-num" style="color:#2f9e44;">
+                        {{ dataset_info.total or '—' }}
+                    </div>
+                    <div class="sbox-lbl">Total Data</div>
+                </div>
+            </div>
+            <div class="irow">
+                <span class="ikey">Precision FAKE</span>
+                <span class="ival">{% if performance.fake_precision %}{{ "%.4f"|format(performance.fake_precision) }}{% else %}—{% endif %}</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Recall FAKE</span>
+                <span class="ival">{% if performance.fake_recall %}{{ "%.4f"|format(performance.fake_recall) }}{% else %}—{% endif %}</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Precision REAL</span>
+                <span class="ival">{% if performance.real_precision %}{{ "%.4f"|format(performance.real_precision) }}{% else %}—{% endif %}</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Recall REAL</span>
+                <span class="ival">{% if performance.real_recall %}{{ "%.4f"|format(performance.real_recall) }}{% else %}—{% endif %}</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Sensitivity</span>
+                <span class="ival">{% if performance.sensitivity %}{{ "%.4f"|format(performance.sensitivity) }}{% else %}—{% endif %}</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Specificity</span>
+                <span class="ival">{% if performance.specificity %}{{ "%.4f"|format(performance.specificity) }}{% else %}—{% endif %}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 2: Dataset + Konfigurasi ─────────────────────────── -->
+<div class="two-col">
+
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-database"></i> Informasi Dataset</span>
+            <span class="pill pill-m">{{ dataset_info.balance or '50-50' }}</span>
+        </div>
+        <div class="tcard-body">
+            <div class="irow">
+                <span class="ikey">Total Sampel</span>
+                <span class="ival">{{ dataset_info.total or '—' }} berita</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Data Latih</span>
+                <span class="ival">{{ dataset_info.train or '—' }} sampel (80%)</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Data Uji</span>
+                <span class="ival">{{ dataset_info.test or '—' }} sampel (20%)</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Sumber FAKE</span>
+                <span class="ival">TurnBackHoax.id</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Sumber REAL</span>
+                <span class="ival">Antara News</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Balancing</span>
+                <span class="ival">{{ dataset_info.balance or '50-50' }} (FAKE:REAL)</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Jenis Fitur</span>
+                <span class="ival">Teks Judul Berita</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-gear"></i> Konfigurasi Training</span>
+            <span class="pill pill-b">Fine-tuning</span>
+        </div>
+        <div class="tcard-body">
+            <div class="irow">
+                <span class="ikey">Model Pretrained</span>
+                <span class="ival" style="font-size:.78rem;">{{ model_info.model_name or 'indobenchmark/indobert-base-p1' }}</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Epochs</span>
+                <span class="ival">{{ model_info.epochs or '—' }}</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Learning Rate</span>
+                <span class="ival">{{ model_info.learning_rate or '—' }}</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Batch Size</span>
+                <span class="ival">{{ model_info.batch_size or '—' }}</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Max Length</span>
+                <span class="ival">{{ model_info.max_length or '—' }} token</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Num Labels</span>
+                <span class="ival">{{ model_info.num_labels or 2 }} kelas</span>
+            </div>
+            <div class="irow">
+                <span class="ikey">Framework</span>
+                <span class="ival">PyTorch + HuggingFace Trainer</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 3: Tujuan + Manfaat ──────────────────────────────── -->
+<div class="two-col">
+
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-target"></i> Tujuan Penelitian</span>
+        </div>
+        <div class="tcard-body">
+            <p style="font-size:.87rem;color:#3b3f52;line-height:1.7;margin-bottom:16px;">
+                Mengembangkan model deteksi berita palsu yang akurat menggunakan
+                <strong style="color:#3b5bdb;">BERT (IndoBERT)</strong> untuk konten berita
+                Bahasa Indonesia, dengan implementasi sebagai web application real-time.
+            </p>
+            <div style="font-size:.75rem;font-weight:700;color:#8b90a8;text-transform:uppercase;
+                        letter-spacing:.07em;margin-bottom:10px;">Tujuan Khusus</div>
+            <div class="obj-list">
+                <div class="obj-item">
+                    <div class="obj-num">1</div>
+                    <span>Menganalisis karakteristik linguistik berita palsu dan valid dalam konten Bahasa Indonesia.</span>
+                </div>
+                <div class="obj-item">
+                    <div class="obj-num">2</div>
+                    <span>Melakukan fine-tuning IndoBERT untuk klasifikasi biner FAKE/REAL pada dataset berita Indonesia.</span>
+                </div>
+                <div class="obj-item">
+                    <div class="obj-num">3</div>
+                    <span>Mengevaluasi performa model menggunakan Accuracy, Precision, Recall, F1-Score, Sensitivity, dan Specificity.</span>
+                </div>
+                <div class="obj-item">
+                    <div class="obj-num">4</div>
+                    <span>Mengimplementasikan model ke dalam web application Flask yang dapat diakses secara real-time.</span>
+                </div>
+                <div class="obj-item">
+                    <div class="obj-num">5</div>
+                    <span>Berkontribusi pada upaya literasi digital dan penanggulangan disinformasi di Indonesia.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-lightbulb"></i> Manfaat Penelitian</span>
+        </div>
+        <div class="tcard-body">
+            <div class="obj-list">
+                <div class="obj-item">
+                    <div class="obj-icon" style="background:#edf2ff;color:#3b5bdb;">
+                        <i class="ph ph-user" style="font-size:.8rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:.85rem;color:#0f1117;margin-bottom:2px;">Masyarakat Umum</div>
+                        <div style="font-size:.8rem;color:#8b90a8;">Alat bantu verifikasi berita sebelum disebarkan, meningkatkan literasi digital.</div>
+                    </div>
+                </div>
+                <div class="obj-item">
+                    <div class="obj-icon" style="background:#f3f0ff;color:#7048e8;">
+                        <i class="ph ph-newspaper" style="font-size:.8rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:.85rem;color:#0f1117;margin-bottom:2px;">Jurnalis & Media</div>
+                        <div style="font-size:.8rem;color:#8b90a8;">Referensi otomasi fact-checking dalam proses kurasi konten berita online.</div>
+                    </div>
+                </div>
+                <div class="obj-item">
+                    <div class="obj-icon" style="background:#ebfbee;color:#2f9e44;">
+                        <i class="ph ph-buildings" style="font-size:.8rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:.85rem;color:#0f1117;margin-bottom:2px;">Institusi & Pemerintah</div>
+                        <div style="font-size:.8rem;color:#8b90a8;">Mendukung kebijakan penanggulangan hoaks dan disinformasi berbasis teknologi AI.</div>
+                    </div>
+                </div>
+                <div class="obj-item">
+                    <div class="obj-icon" style="background:#fff8eb;color:#e67700;">
+                        <i class="ph ph-graduation-cap" style="font-size:.8rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:.85rem;color:#0f1117;margin-bottom:2px;">Akademisi & Peneliti</div>
+                        <div style="font-size:.8rem;color:#8b90a8;">Referensi implementasi NLP BERT untuk klasifikasi teks Bahasa Indonesia.</div>
+                    </div>
+                </div>
+                <div class="obj-item" style="border-bottom:none;padding-bottom:0;">
+                    <div class="obj-icon" style="background:#fff5f5;color:#e03131;">
+                        <i class="ph ph-shield-check" style="font-size:.8rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:.85rem;color:#0f1117;margin-bottom:2px;">Platform Digital</div>
+                        <div style="font-size:.8rem;color:#8b90a8;">Integrasi API deteksi hoaks untuk moderasi konten secara otomatis.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 4: Metodologi ─────────────────────────────────────── -->
+<div class="full-col">
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-flow-arrow"></i> Alur Metodologi Penelitian</span>
+            <span class="pill pill-m">6 Tahap</span>
+        </div>
+        <div class="tcard-body">
+            <div class="flow-grid">
+                <div class="fstep">
+                    <div class="ficon"><i class="ph ph-database"></i></div>
+                    <div class="ftitle">Pengumpulan Data</div>
+                    <div class="fsub">{{ dataset_info.total or '—' }} berita dari TurnBackHoax & Antara News</div>
+                </div>
+                <div class="fstep">
+                    <div class="ficon"><i class="ph ph-funnel"></i></div>
+                    <div class="ftitle">Pra-pemrosesan</div>
+                    <div class="fsub">Tokenisasi IndoBERT, padding, truncation max {{ model_info.max_length or 128 }} token</div>
+                </div>
+                <div class="fstep">
+                    <div class="ficon"><i class="ph ph-git-branch"></i></div>
+                    <div class="ftitle">Split Dataset</div>
+                    <div class="fsub">Train {{ dataset_info.train or '—' }} · Test {{ dataset_info.test or '—' }} (80:20)</div>
+                </div>
+                <div class="fstep">
+                    <div class="ficon v"><i class="ph ph-brain"></i></div>
+                    <div class="ftitle">Fine-tuning BERT</div>
+                    <div class="fsub">{{ model_info.epochs or '—' }} epoch · LR {{ model_info.learning_rate or '—' }}</div>
+                </div>
+                <div class="fstep">
+                    <div class="ficon g"><i class="ph ph-chart-line-up"></i></div>
+                    <div class="ftitle">Evaluasi Model</div>
+                    <div class="fsub">
+                        Acc {% if performance.accuracy %}{{ "%.1f"|format(performance.accuracy * 100) }}%{% else %}—{% endif %}
+                        · F1 {% if performance.macro_f1 %}{{ "%.1f"|format(performance.macro_f1 * 100) }}%{% else %}—{% endif %}
+                    </div>
+                </div>
+                <div class="fstep">
+                    <div class="ficon a"><i class="ph ph-globe"></i></div>
+                    <div class="ftitle">Deployment</div>
+                    <div class="fsub">Flask Web App · Real-time Prediction API</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 5: Teknologi ──────────────────────────────────────── -->
+<div class="three-col">
+
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-brain"></i> Model & ML</span>
+        </div>
+        <div class="tcard-body">
+            <div class="tech-wrap">
+                <span class="ttag"><i class="ph ph-brain"></i> IndoBERT</span>
+                <span class="ttag"><i class="ph ph-fire"></i> PyTorch</span>
+                <span class="ttag"><i class="ph ph-cube"></i> HuggingFace</span>
+                <span class="ttag"><i class="ph ph-chart-bar"></i> Scikit-learn</span>
+                <span class="ttag"><i class="ph ph-math-operations"></i> NumPy</span>
+                <span class="ttag"><i class="ph ph-table"></i> Pandas</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-flask"></i> Backend & API</span>
+        </div>
+        <div class="tcard-body">
+            <div class="tech-wrap">
+                <span class="ttag"><i class="ph ph-flask"></i> Flask</span>
+                <span class="ttag"><i class="ph ph-snake"></i> Python 3</span>
+                <span class="ttag"><i class="ph ph-code"></i> REST API</span>
+                <span class="ttag"><i class="ph ph-file-js"></i> JSON</span>
+                <span class="ttag"><i class="ph ph-lightning"></i> Jinja2</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-monitor"></i> Frontend & Visualisasi</span>
+        </div>
+        <div class="tcard-body">
+            <div class="tech-wrap">
+                <span class="ttag"><i class="ph ph-file-html"></i> HTML5</span>
+                <span class="ttag"><i class="ph ph-palette"></i> CSS3</span>
+                <span class="ttag"><i class="ph ph-file-js"></i> JavaScript</span>
+                <span class="ttag"><i class="ph ph-chart-line-up"></i> Plotly</span>
+                <span class="ttag"><i class="ph ph-phosphor-logo"></i> Phosphor Icons</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Row 6: Kesimpulan ─────────────────────────────────────── -->
+<div class="full-col">
+    <div class="tcard">
+        <div class="tcard-hd">
+            <span class="tcard-hd-title"><i class="ph ph-check-square"></i> Kesimpulan Penelitian</span>
+            <span class="pill pill-g"><i class="ph ph-check"></i> Selesai</span>
+        </div>
+        <div class="tcard-body">
+            <div class="conclusion">
+                Penelitian ini berhasil mengembangkan <strong>model deteksi berita palsu berbasis IndoBERT</strong>
+                yang mencapai akurasi
+                <strong>{% if performance.accuracy %}{{ "%.2f"|format(performance.accuracy * 100) }}%{% else %}—{% endif %}</strong>
+                dengan Macro F1-Score sebesar
+                <strong>{% if performance.macro_f1 %}{{ "%.2f"|format(performance.macro_f1 * 100) }}%{% else %}—{% endif %}</strong>
+                pada dataset berita Bahasa Indonesia. Model dilatih menggunakan
+                <strong>{{ dataset_info.total or '—' }} sampel</strong> dari dua sumber terverifikasi
+                (TurnBackHoax.id untuk kelas FAKE dan Antara News untuk kelas REAL) dengan rasio
+                seimbang 50:50. Proses fine-tuning dilakukan selama
+                <strong>{{ model_info.epochs or '—' }} epoch</strong> dengan learning rate
+                <strong>{{ model_info.learning_rate or '—' }}</strong> menggunakan HuggingFace Trainer API.
+                Sistem ini berhasil diimplementasikan sebagai web application berbasis Flask yang
+                mendukung <strong>prediksi real-time</strong> melalui antarmuka yang intuitif,
+                sehingga dapat digunakan secara langsung untuk membantu masyarakat memverifikasi
+                kebenaran suatu berita sebelum disebarluaskan.
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.tcard').forEach((card, i) => {
+            card.style.opacity   = '0';
+            card.style.transform = 'translateY(14px)';
+            card.style.transition = `opacity .35s ease ${i * 0.05}s, transform .35s ease ${i * 0.05}s`;
+            requestAnimationFrame(() => {
+                card.style.opacity   = '1';
+                card.style.transform = 'translateY(0)';
+            });
+        });
+    });
+</script>
+{% endblock %}

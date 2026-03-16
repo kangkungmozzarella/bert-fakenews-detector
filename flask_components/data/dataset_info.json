@@ -1,0 +1,47 @@
+{
+  "total_rows": 248,
+  "columns": [
+    "judul",
+    "label",
+    "sumber",
+    "kategori",
+    "title_length"
+  ],
+  "missing_values": {
+    "judul": 0,
+    "label": 0,
+    "sumber": 0,
+    "kategori": 0,
+    "title_length": 0
+  },
+  "label_distribution": {
+    "REAL": 150,
+    "FAKE": 98
+  },
+  "source_distribution": {
+    "Kompas.com": 100,
+    "TurnBackHoax.id": 98,
+    "CNN Indonesia": 25,
+    "Antara News": 25
+  },
+  "title_length_stats": {
+    "mean": 62.45564516129032,
+    "std": 14.170379109836642,
+    "min": 25,
+    "max": 100
+  },
+  "crosstab": {
+    "FAKE": {
+      "Antara News": 0,
+      "CNN Indonesia": 0,
+      "Kompas.com": 0,
+      "TurnBackHoax.id": 98
+    },
+    "REAL": {
+      "Antara News": 25,
+      "CNN Indonesia": 25,
+      "Kompas.com": 100,
+      "TurnBackHoax.id": 0
+    }
+  }
+}
